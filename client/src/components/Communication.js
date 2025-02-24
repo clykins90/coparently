@@ -5,7 +5,8 @@ function Communication() {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
-  const [partnerId] = useState(localStorage.getItem('partnerId'));
+  const [partnerId, setPartnerId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,6 +14,15 @@ function Communication() {
       navigate('/login');
       return;
     }
+
+    // Fetch partner ID from server
+    const fetchPartner = async () => {
+      const response = await fetch(`/api/partner?userId=${user.id}`);
+      const data = await response.json();
+      if (data.success) setPartnerId(data.partnerId);
+    };
+    
+    fetchPartner();
 
     const fetchMessages = async () => {
       try {
@@ -30,27 +40,43 @@ function Communication() {
   }, [user, navigate]);
 
   const handleSend = async () => {
-    try {
-      // Get current partner ID from server
-      const partnerRes = await fetch(`/api/partner?userId=${user.id}`);
-      const partnerData = await partnerRes.json();
-      
-      if (!partnerData.success) {
-        alert('No partner linked!');
-        return;
-      }
-      const currentPartnerId = partnerData.partnerId;
+    if (isLoading) return;
+    
+    if (!partnerId) {
+      alert('No partner linked!');
+      return;
+    }
+    
+    if (message.trim().length === 0) {
+      alert('Cannot send empty message');
+      return;
+    }
 
+    setIsLoading(true);
+    
+    try {
       const response = await fetch('/api/filter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message,
+        body: JSON.stringify({
+          message: message,
           senderId: user.id,
-          receiverId: currentPartnerId 
+          receiverId: partnerId
         })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.error);
+        setIsLoading(false);
+        return;
+      }
+
       const data = await response.json();
+      if (data.filteredMessage.includes('[BLOCKED]')) {
+        throw new Error('Invalid message passed through filter');
+      }
+      
       setChatHistory([...chatHistory, {
         senderId: user.id,
         content: data.filteredMessage,
@@ -59,34 +85,55 @@ function Communication() {
       setMessage('');
     } catch (err) {
       console.error('Error filtering message:', err);
+      alert('Failed to send message. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const formatTimestamp = (timestamp) => {
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
     <div>
       <h3>Communication</h3>
-      <div
-        style={{ border: '1px solid #ccc', padding: '1rem', height: '300px', overflowY: 'scroll' }}
-      >
+      <div className="chat-window">
         {chatHistory.map((msg, index) => (
-          <div key={index}>
-            <p style={{ textAlign: msg.senderId === user.id ? 'right' : 'left' }}>
-              <strong>{msg.senderId === user.id ? 'You' : 'Partner'}:</strong> {msg.content}
-            </p>
+          <div
+            key={index}
+            className={`message-bubble ${msg.senderId === user.id ? 'sender' : 'receiver'}`}
+          >
+            <div className="message-text">{msg.content}</div>
+            <div className="message-timestamp">{formatTimestamp(msg.timestamp)}</div>
           </div>
         ))}
       </div>
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={(e) => {
+          if (isLoading) return;
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
+        disabled={isLoading}
         rows={4}
         style={{ width: '100%', marginTop: '1rem' }}
       />
-      <button onClick={handleSend} style={{ marginTop: '0.5rem' }}>
-        Send
+      <button 
+        onClick={handleSend} 
+        style={{ marginTop: '0.5rem' }}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <div className="spinner"></div>
+        ) : 'Send'}
       </button>
     </div>
   );
 }
 
-export default Communication; 
+export default Communication;

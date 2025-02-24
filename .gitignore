@@ -1,0 +1,11 @@
+# Server
+server/.env
+server/db.json
+
+# Client
+client/.env
+client/build/
+
+# Common
+node_modules/
+*.log 

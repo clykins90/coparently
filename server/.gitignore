@@ -1,0 +1,14 @@
+# Environment variables
+.env
+
+# Database file
+db.json
+
+# Dependencies
+node_modules/
+
+# Logs and debug files
+*.log
+*.pid
+*.seed
+*.pid.lock 
