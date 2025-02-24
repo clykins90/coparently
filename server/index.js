@@ -6,6 +6,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
+const { sendPartnerInvitation } = require('./utils/mailService');
 
 // Import Sequelize instance and models from our models folder
 const {
@@ -104,7 +105,7 @@ app.post('/api/login', async (req, res) => {
         lastName: user.last_name,
         email: user.email,
         phone: user.phone,
-        requiresPartner: !hasPartner,
+        hasPartner: hasPartner,
         requiresProfile: !isProfileComplete
       });
     } else {
@@ -273,6 +274,51 @@ app.post('/api/test-filter', async (req, res) => {
   } catch (err) {
     console.error('Test filter error:', err);
     res.status(500).json({ error: 'Filter test failed' });
+  }
+});
+
+// Endpoint: Invite a partner
+app.post('/api/invite-partner', async (req, res) => {
+  try {
+    const { userId, partnerEmail } = req.body;
+    
+    // Get the inviting user's info
+    const invitingUser = await User.findByPk(userId);
+    if (!invitingUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Check if partner already exists
+    const existingPartner = await User.findOne({ where: { email: partnerEmail } });
+    
+    if (existingPartner) {
+      // Partner exists, create conversation link
+      const conversation = await Conversation.create({ conversation_type: 'linked_partner' });
+      await conversation.addUsers([userId, existingPartner.id]);
+      
+      res.json({ 
+        success: true, 
+        message: 'Partner linked successfully!',
+        partnerExists: true
+      });
+    } else {
+      // Send invitation email to partner
+      const invitingUserName = `${invitingUser.first_name} ${invitingUser.last_name}`;
+      const emailResult = await sendPartnerInvitation(partnerEmail, invitingUserName);
+      
+      if (emailResult.success) {
+        res.json({
+          success: true,
+          message: 'Invitation sent successfully',
+          partnerExists: false
+        });
+      } else {
+        throw new Error('Failed to send invitation email');
+      }
+    }
+  } catch (err) {
+    console.error('Partner invitation error:', err);
+    res.status(500).json({ success: false, message: "Failed to send invitation" });
   }
 });
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PartnerRequired from './PartnerRequired';
 
 function Communication() {
   const [message, setMessage] = useState('');
@@ -7,6 +8,7 @@ function Communication() {
   const [user] = useState(JSON.parse(localStorage.getItem('user')));
   const [partnerId, setPartnerId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasPartner, setHasPartner] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,6 +21,7 @@ function Communication() {
     const fetchPartner = async () => {
       const response = await fetch(`/api/partner?userId=${user.id}`);
       const data = await response.json();
+      setHasPartner(data.success);
       if (data.success) setPartnerId(data.partnerId);
     };
     
@@ -95,8 +98,12 @@ function Communication() {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  if (!hasPartner) {
+    return <PartnerRequired />;
+  }
+
   return (
-    <div>
+    <div className="communication-container">
       <h3>Communication</h3>
       <div className="chat-window">
         {chatHistory.map((msg, index) => (

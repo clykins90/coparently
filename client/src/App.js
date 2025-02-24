@@ -30,18 +30,14 @@ function AppContent() {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      const isComplete = 
-        parsedUser?.firstName?.trim() && 
-        parsedUser?.lastName?.trim() && 
-        parsedUser?.phone?.trim() &&
-        parsedUser?.email?.trim();
+      const isComplete = parsedUser?.email?.trim();
       setRequiresProfile(!isComplete);
       setLoading(false);
     } else {
       setLoading(false);
     }
     
-    if (location.state?.requiresProfile) {
+    if (location.state?.requiresProfile === true) {
       setRequiresProfile(true);
     }
   }, [location]);
@@ -65,8 +61,6 @@ function AppContent() {
             user ? (
               requiresProfile ? (
                 <Navigate to="/profile" replace state={{ requiresProfile: true }} />
-              ) : location.state?.requiresPartner ? (
-                <Navigate to="/link-partner" replace />
               ) : (
                 <div className="main-app">
                   <MainApp user={user} />

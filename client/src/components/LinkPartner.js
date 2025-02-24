@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function LinkPartner({ user }) {
@@ -6,37 +6,38 @@ function LinkPartner({ user }) {
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const checkExistingPartner = async () => {
-      const response = await fetch(`/api/partner?userId=${user.id}`);
-      const data = await response.json();
-      if (data.success) navigate('/app');
-    };
-    checkExistingPartner();
-  }, [user.id, navigate]);
-
   const handleLink = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/link-partner', {
+      const response = await fetch('/api/invite-partner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, partnerEmail })
       });
       const data = await response.json();
+      
       if (data.success) {
         setMessage(data.message);
-        setTimeout(() => navigate('/app/communication'), 1500);
+        if (data.partnerExists) {
+          // Partner exists and was linked
+          setTimeout(() => navigate('/app/communication'), 1500);
+        } else {
+          // Invitation sent to new partner
+          setMessage('Invitation sent! Your partner will receive an email to join.');
+        }
+      } else {
+        setMessage(data.message);
       }
     } catch (err) {
-      setMessage('Linking failed');
+      setMessage('Failed to send invitation');
     }
   };
 
   return (
-    <div>
+    <div className="link-partner-container">
       <h2>Link with Your Partner</h2>
-      {message && <p>{message}</p>}
+      <p>Enter your partner's email to send them an invitation to connect.</p>
+      {message && <p className="message">{message}</p>}
       <form onSubmit={handleLink}>
         <input 
           type="email"
@@ -45,7 +46,7 @@ function LinkPartner({ user }) {
           onChange={(e) => setPartnerEmail(e.target.value)}
           required
         />
-        <button type="submit">Link Partner</button>
+        <button type="submit">Send Invitation</button>
       </form>
     </div>
   );
