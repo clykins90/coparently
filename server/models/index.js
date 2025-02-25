@@ -6,13 +6,18 @@ const fs = require('fs');
 // Use environment variables to store your credentials (create a .env file in the server folder)
 const sequelize = new Sequelize(
   process.env.POSTGRES_DB || 'coparently-db',    // database name
-  process.env.POSTGRES_USER || 'your_db_user',     // username
-  process.env.POSTGRES_PASSWORD || 'your_password',// password
+  process.env.POSTGRES_USER || 'postgres',     // username
+  process.env.POSTGRES_PASSWORD || 'postgres',// password
   {
     host: process.env.POSTGRES_HOST || 'localhost',
     port: process.env.POSTGRES_PORT || 5432,
     dialect: 'postgres',
-    logging: false  // change to console.log to debug SQL queries if needed
+    logging: false,  // change to console.log to debug SQL queries if needed
+    // Add retry logic for connection
+    retry: {
+      max: 3,
+      match: [/SequelizeConnectionError/]
+    }
   }
 );
 

@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { FaHeart } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import FormInput from './common/FormInput';
+import { validateLoginForm, formatErrorMessages } from '../utils/validation';
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [formErrors, setFormErrors] = useState({});
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [successMessage, setSuccessMessage] = useState('');
@@ -29,14 +35,31 @@ function Login() {
     }
   }, [location, navigate]);
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ''
+      });
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
     
     // Test account bypass
-    if (email === testAccount.email && password === testAccount.password) {
+    if (formData.email === testAccount.email && formData.password === testAccount.password) {
       const userData = { 
         id: 1, 
-        email,
+        email: formData.email,
         firstName: testAccount.firstName,
         lastName: testAccount.lastName,
         phone: testAccount.phone,
@@ -53,8 +76,17 @@ function Login() {
       return;
     }
 
+    // Validate form
+    const validation = validateLoginForm(formData.email, formData.password);
+    if (!validation.isValid) {
+      setFormErrors(validation.errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    
     try {
-      const result = await login(email, password);
+      const result = await login(formData.email, formData.password);
       
       if (result.success) {
         navigate('/app');
@@ -62,7 +94,9 @@ function Login() {
         setError(result.message || 'Login failed');
       }
     } catch (err) {
-      setError('Login failed');
+      setError('Login failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -80,21 +114,30 @@ function Login() {
       )}
       {error && <p className="error">{error}</p>}
       <form className="login-form" onSubmit={handleLogin}>
-        <input 
+        <FormInput 
           type="email" 
+          name="email"
           placeholder="Email"
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
+          value={formData.email} 
+          onChange={handleChange} 
+          error={formErrors.email}
           required
         />
-        <input 
+        <FormInput 
           type="password"
+          name="password"
           placeholder="Password" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)}
+          value={formData.password} 
+          onChange={handleChange}
+          error={formErrors.password}
           required
         />
-        <button type="submit">Login</button>
+        <button 
+          type="submit" 
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Logging in...' : 'Login'}
+        </button>
       </form>
       <p style={{ marginTop: '1rem' }}>
         Don't have an account? <Link to="/register">Register here</Link>

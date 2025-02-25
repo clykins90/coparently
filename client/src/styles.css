@@ -173,6 +173,7 @@ button:disabled {
 /* Profile Form Styles */
 .form-group {
   margin-bottom: 1rem;
+  position: relative;
 }
 
 .form-group label {
@@ -402,4 +403,66 @@ textarea:disabled {
 
 .status-disconnected {
   color: red;
+}
+
+/* Form Validation Styles */
+.input-error {
+  border-color: #e74c3c !important;
+  background-color: #fdf7f7;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  text-align: left;
+}
+
+.error {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  background-color: #fdf7f7;
+  border: 1px solid #fadbd8;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+/* Password strength indicator */
+.password-strength {
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.strength-weak {
+  background-color: #e74c3c;
+  width: 30%;
+}
+
+.strength-medium {
+  background-color: #f39c12;
+  width: 60%;
+}
+
+.strength-strong {
+  background-color: #2ecc71;
+  width: 100%;
+}
+
+/* Improved form styling */
+.login-form input {
+  padding: 0.8rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 1rem;
+  width: 100%;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-form input:focus {
+  border-color: #0077cc;
+  box-shadow: 0 0 0 2px rgba(0, 119, 204, 0.2);
+  outline: none;
 }
