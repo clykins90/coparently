@@ -101,14 +101,18 @@ router.get('/google', (req, res, next) => {
 
 router.get('/google/callback', 
   (req, res, next) => {
-    passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login?error=auth_failed' })(req, res, next);
+    passport.authenticate('google', { 
+      failureRedirect: 'http://localhost:3000/login?error=auth_failed',
+      failWithError: true
+    })(req, res, next);
   },
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       // User is authenticated and available in req.user
       const user = req.user;
       
       if (!user) {
+        console.error('Google OAuth callback: No user data available');
         return res.redirect('http://localhost:3000/login?error=no_user_data');
       }
       
@@ -161,6 +165,11 @@ router.get('/google/callback',
       console.error('Error in Google callback:', error);
       res.redirect('http://localhost:3000/login?error=server_error');
     }
+  },
+  // Error handler for authentication failures
+  (err, req, res, next) => {
+    console.error('Google OAuth authentication error:', err);
+    res.redirect('http://localhost:3000/login?error=auth_failed');
   }
 );
 
