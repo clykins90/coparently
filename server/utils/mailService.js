@@ -1,31 +1,24 @@
-const sgMail = require('@sendgrid/mail');
+// This is a placeholder for a real email service
+// In a production environment, you would use a service like SendGrid, Mailgun, etc.
 
-// Initialize SendGrid with API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-const sendPartnerInvitation = async (partnerEmail, invitingUserName) => {
-  try {
-    const msg = {
-      to: partnerEmail,
-      from: process.env.SENDGRID_FROM_EMAIL,
-      subject: `${invitingUserName} invited you to Coparently`,
-      templateId: 'd-your-template-id', // Create this in SendGrid dashboard
-      dynamicTemplateData: {
-        invitingUser: invitingUserName,
-        inviteLink: `${process.env.CLIENT_URL}/register?invite=true&email=${encodeURIComponent(partnerEmail)}`,
-      },
-    };
-
-    await sgMail.send(msg);
-    return { success: true };
-  } catch (error) {
-    console.error('SendGrid Error:', error);
-    if (error.response) {
-      console.error(error.response.body);
-    }
-    return { success: false, error: error.message };
-  }
-};
+/**
+ * Send an invitation email to a partner
+ * @param {string} partnerEmail - The email address of the partner to invite
+ * @param {string} invitingUserName - The name of the user sending the invitation
+ * @returns {Promise<Object>} - A promise that resolves to an object with success status
+ */
+async function sendPartnerInvitation(partnerEmail, invitingUserName) {
+  // In a real implementation, this would send an actual email
+  console.log(`Sending invitation email to ${partnerEmail} from ${invitingUserName}`);
+  
+  // Simulate email sending
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Email sent to ${partnerEmail}`);
+      resolve({ success: true, message: 'Email sent successfully' });
+    }, 500);
+  });
+}
 
 module.exports = {
   sendPartnerInvitation

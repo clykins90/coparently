@@ -1,0 +1,57 @@
+---
+description: this is a database file. when modifying the database review this.
+globs: 
+---
+# Database Rules and Standards
+
+## Connection
+- Use environment variables for all database credentials
+- Set up separate connection configurations for development, testing, and production
+- Log database errors but not regular queries in production
+
+## Models
+- Each model should be in its own file
+- Models should include comprehensive field validation
+- All tables should use underscored naming (snake_case)
+- All models should have proper associations defined
+- Include appropriate indexes for frequently queried fields
+
+## Schema Changes
+- Never use `force: true` in production
+- Use migrations for all schema changes
+- Document all migrations with clear descriptions
+- Test migrations in development before applying to production
+
+## Data Integrity
+- Use transactions for operations that modify multiple tables
+- Define appropriate constraints (NOT NULL, UNIQUE, etc.)
+- Use foreign key constraints to maintain referential integrity
+- Set default values where appropriate
+
+## Security
+- Never store plain text passwords (use bcrypt or similar)
+- Sanitize all user inputs before database operations
+- Use parameterized queries to prevent SQL injection
+- Limit database user permissions to only what's necessary
+
+## Performance
+- Create indexes for columns used in WHERE, JOIN, and ORDER BY clauses
+- Avoid N+1 query problems by using eager loading
+- Use pagination for large result sets
+- Monitor query performance and optimize slow queries
+
+## Backup and Recovery
+- Set up regular automated backups
+- Test restoration process periodically
+- Store backups in a separate physical location
+- Document recovery procedures
+
+## Development Workflow
+- Use seeders for development and testing data
+- Never connect to production database from local development
+- Use database versioning to track schema changes
+- Review database changes before deployment
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
