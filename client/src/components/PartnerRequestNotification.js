@@ -42,12 +42,12 @@ function PartnerRequestNotification() {
   }
   
   return (
-    <div className="partner-request-notification">
-      <div className="notification-content">
-        <p>
-          <strong>You have {pendingRequests.length} pending partner {pendingRequests.length === 1 ? 'request' : 'requests'}</strong>
+    <div className="fixed top-20 right-4 z-30 bg-accent text-white p-4 rounded-lg shadow-lg max-w-xs">
+      <div className="flex flex-col space-y-3">
+        <p className="font-medium">
+          You have {pendingRequests.length} pending partner {pendingRequests.length === 1 ? 'request' : 'requests'}
         </p>
-        <Link to="/link-partner" className="view-requests-button">
+        <Link to="/link-partner" className="bg-white text-accent font-medium py-2 px-4 rounded hover:bg-gray-100 transition-colors duration-200 text-center">
           View Requests
         </Link>
       </div>

@@ -62,16 +62,16 @@ export const isValidName = (name) => {
 };
 
 // Validate login form
-export const validateLoginForm = (email, password) => {
+export const validateLoginForm = (formData) => {
   const errors = {};
   
-  if (!email) {
+  if (!formData.email) {
     errors.email = 'Email is required';
-  } else if (!isValidEmail(email)) {
+  } else if (!isValidEmail(formData.email)) {
     errors.email = 'Please enter a valid email address';
   }
   
-  if (!password) {
+  if (!formData.password) {
     errors.password = 'Password is required';
   }
   

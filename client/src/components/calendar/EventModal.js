@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { FaTimes, FaTrash, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaUser, FaChild, FaStickyNote } from 'react-icons/fa';
 
 function EventModal({ 
   mode, 
@@ -131,25 +132,41 @@ function EventModal({
     (event && (event.createdById === currentUserId || event.responsibleParentId === currentUserId));
   
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h3>{mode === 'create' ? 'Create New Event' : 'Edit Event'}</h3>
-          <button className="close-button" onClick={onClose}>×</button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4">
+          <h3 className="text-xl font-semibold text-gray-800">
+            {mode === 'create' ? 'Create New Event' : 'Edit Event'}
+          </h3>
+          <button 
+            className="text-gray-500 hover:text-gray-700 transition-colors" 
+            onClick={onClose}
+          >
+            <FaTimes className="text-xl" />
+          </button>
         </div>
         
         {!canEdit ? (
-          <div className="modal-body">
-            <p className="error-message">You don't have permission to edit this event.</p>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={onClose}>Close</button>
+          <div className="p-6">
+            <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
+              <p>You don't have permission to edit this event.</p>
+            </div>
+            <div className="flex justify-end">
+              <button 
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition-colors"
+                onClick={onClose}
+              >
+                Close
+              </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body">
-              <div className="form-group">
-                <label htmlFor="title">Title *</label>
+          <form onSubmit={handleSubmit} className="flex flex-col h-full">
+            <div className="flex-grow overflow-y-auto p-6 space-y-4">
+              <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                  Title *
+                </label>
                 <input
                   type="text"
                   id="title"
@@ -157,31 +174,35 @@ function EventModal({
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  className="form-control"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
               
-              <div className="form-group">
-                <label htmlFor="description">Description</label>
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
                 <textarea
                   id="description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  className="form-control"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   rows="3"
                 />
               </div>
               
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="event_type">Event Type</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="event_type" className="block text-sm font-medium text-gray-700 mb-1">
+                    Event Type
+                  </label>
                   <select
                     id="event_type"
                     name="event_type"
                     value={formData.event_type}
                     onChange={handleChange}
-                    className="form-control"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   >
                     <option value="custody_transfer">Custody Transfer</option>
                     <option value="appointment">Appointment</option>
@@ -191,34 +212,40 @@ function EventModal({
                   </select>
                 </div>
                 
-                <div className="form-group">
-                  <label htmlFor="location">Location</label>
+                <div>
+                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FaMapMarkerAlt className="mr-1 text-gray-500" /> Location
+                  </label>
                   <input
                     type="text"
                     id="location"
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    className="form-control"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
               </div>
               
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    name="is_all_day"
-                    checked={formData.is_all_day}
-                    onChange={handleChange}
-                  />
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_all_day"
+                  name="is_all_day"
+                  checked={formData.is_all_day}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label htmlFor="is_all_day" className="ml-2 block text-sm text-gray-700">
                   All Day Event
                 </label>
               </div>
               
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="start_time">Start Time *</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="start_time" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FaCalendarAlt className="mr-1 text-gray-500" /> Start Time *
+                  </label>
                   <input
                     type="datetime-local"
                     id="start_time"
@@ -226,12 +253,14 @@ function EventModal({
                     value={formData.start_time}
                     onChange={handleChange}
                     required
-                    className="form-control"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
                 
-                <div className="form-group">
-                  <label htmlFor="end_time">End Time *</label>
+                <div>
+                  <label htmlFor="end_time" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FaClock className="mr-1 text-gray-500" /> End Time *
+                  </label>
                   <input
                     type="datetime-local"
                     id="end_time"
@@ -239,19 +268,21 @@ function EventModal({
                     value={formData.end_time}
                     onChange={handleChange}
                     required
-                    className="form-control"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
               </div>
               
-              <div className="form-group">
-                <label htmlFor="responsible_parent_id">Responsible Parent</label>
+              <div>
+                <label htmlFor="responsible_parent_id" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  <FaUser className="mr-1 text-gray-500" /> Responsible Parent
+                </label>
                 <select
                   id="responsible_parent_id"
                   name="responsible_parent_id"
                   value={formData.responsible_parent_id || ''}
                   onChange={handleChange}
-                  className="form-control"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="">None</option>
                   {/* This would need to be populated with the co-parent's information */}
@@ -259,71 +290,93 @@ function EventModal({
                 </select>
               </div>
               
-              <div className="form-group">
-                <label>Children Involved</label>
-                <div className="checkbox-list">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <FaChild className="mr-1 text-gray-500" /> Children Involved
+                </label>
+                <div className="space-y-2 border border-gray-200 rounded-md p-3 max-h-40 overflow-y-auto">
                   {children.length > 0 ? (
                     children.map(child => (
-                      <label key={child.id} className="checkbox-item">
+                      <label key={child.id} className="flex items-center">
                         <input
                           type="checkbox"
                           checked={formData.child_ids.includes(child.id)}
                           onChange={() => handleChildSelection(child.id)}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                         />
-                        {child.first_name} {child.last_name}
+                        <span className="ml-2 text-sm text-gray-700">
+                          {child.first_name} {child.last_name}
+                        </span>
                       </label>
                     ))
                   ) : (
-                    <p className="no-children-message">No children added yet. Add children in settings.</p>
+                    <p className="text-sm text-gray-500 italic">No children added yet. Add children in settings.</p>
                   )}
                 </div>
               </div>
               
-              <div className="form-group">
-                <label htmlFor="notes">Notes</label>
+              <div>
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                  <FaStickyNote className="mr-1 text-gray-500" /> Notes
+                </label>
                 <textarea
                   id="notes"
                   name="notes"
                   value={formData.notes}
                   onChange={handleChange}
-                  className="form-control"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   rows="3"
                 />
               </div>
               
-              {/* Recurring event options - simplified for now */}
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    name="is_recurring"
-                    checked={formData.is_recurring}
-                    onChange={handleChange}
-                  />
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_recurring"
+                  name="is_recurring"
+                  checked={formData.is_recurring}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                />
+                <label htmlFor="is_recurring" className="ml-2 block text-sm text-gray-700">
                   Recurring Event
                 </label>
-                {formData.is_recurring && (
-                  <div className="recurring-options">
-                    <p className="note">Recurring event options will be available in a future update.</p>
-                  </div>
-                )}
               </div>
+              
+              {formData.is_recurring && (
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <p className="text-sm text-blue-700">Recurring event options will be available in a future update.</p>
+                </div>
+              )}
             </div>
             
-            <div className="modal-footer">
-              {mode === 'edit' && (
+            <div className="border-t border-gray-200 px-6 py-4 flex justify-between">
+              <div>
+                {mode === 'edit' && (
+                  <button 
+                    type="button" 
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors flex items-center" 
+                    onClick={handleDelete}
+                  >
+                    <FaTrash className="mr-2" /> Delete
+                  </button>
+                )}
+              </div>
+              <div className="flex space-x-2">
                 <button 
                   type="button" 
-                  className="btn btn-danger" 
-                  onClick={handleDelete}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition-colors" 
+                  onClick={onClose}
                 >
-                  Delete
+                  Cancel
                 </button>
-              )}
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary">
-                {mode === 'create' ? 'Create' : 'Update'}
-              </button>
+                <button 
+                  type="submit" 
+                  className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition-colors"
+                >
+                  {mode === 'create' ? 'Create' : 'Update'}
+                </button>
+              </div>
             </div>
           </form>
         )}

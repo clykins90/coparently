@@ -10,6 +10,7 @@ import EventModal from './calendar/EventModal';
 import CustodyScheduleModal from './calendar/CustodyScheduleModal';
 import ChildrenList from './calendar/ChildrenList';
 import { format } from 'date-fns';
+import { FaCalendarPlus, FaCalendarAlt, FaSpinner } from 'react-icons/fa';
 
 function Calendar() {
   const { user } = useAuth();
@@ -171,17 +172,22 @@ function Calendar() {
   };
 
   if (isLoading) {
-    return <div className="loading">Loading calendar...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <FaSpinner className="animate-spin text-primary text-3xl mr-2" />
+        <span className="text-lg text-gray-600">Loading calendar...</span>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="error-message">
-        <p>{error}</p>
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
+        <p className="font-medium">{error}</p>
         {debugInfo && (
-          <details>
-            <summary>Debug Information</summary>
-            <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+          <details className="mt-2">
+            <summary className="text-sm cursor-pointer hover:text-red-800">Debug Information</summary>
+            <pre className="mt-2 text-xs bg-red-100 p-2 rounded overflow-x-auto">{JSON.stringify(debugInfo, null, 2)}</pre>
           </details>
         )}
       </div>
@@ -189,12 +195,12 @@ function Calendar() {
   }
 
   return (
-    <div className="calendar-container">
-      <div className="calendar-header">
-        <h3>Family Calendar</h3>
-        <div className="calendar-actions">
+    <div className="max-w-6xl mx-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold text-gray-800">Family Calendar</h2>
+        <div className="flex space-x-2">
           <button 
-            className="btn btn-primary" 
+            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition-colors flex items-center"
             onClick={() => {
               setSelectedDate(new Date());
               setModalMode('create');
@@ -202,47 +208,51 @@ function Calendar() {
               setShowEventModal(true);
             }}
           >
-            Add Event
+            <FaCalendarPlus className="mr-2" /> Add Event
           </button>
           <button 
-            className="btn btn-secondary" 
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition-colors flex items-center"
             onClick={handleOpenCustodyModal}
           >
-            Manage Custody Schedule
+            <FaCalendarAlt className="mr-2" /> Manage Custody Schedule
           </button>
         </div>
       </div>
       
-      <div className="calendar-layout">
-        <div className="calendar-sidebar">
-          <ChildrenList children={children} />
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="md:w-1/4">
+          <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+            <ChildrenList children={children} />
+          </div>
           
-          <div className="calendar-legend">
-            <h4>Event Types</h4>
-            <div className="legend-item">
-              <span className="color-box" style={{ backgroundColor: '#4285F4' }}></span>
-              <span>Custody Transfer</span>
-            </div>
-            <div className="legend-item">
-              <span className="color-box" style={{ backgroundColor: '#EA4335' }}></span>
-              <span>Appointment</span>
-            </div>
-            <div className="legend-item">
-              <span className="color-box" style={{ backgroundColor: '#34A853' }}></span>
-              <span>Activity</span>
-            </div>
-            <div className="legend-item">
-              <span className="color-box" style={{ backgroundColor: '#FBBC05' }}></span>
-              <span>School</span>
-            </div>
-            <div className="legend-item">
-              <span className="color-box" style={{ backgroundColor: '#9E9E9E' }}></span>
-              <span>Other</span>
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <h3 className="text-lg font-semibold mb-3 text-gray-800">Event Types</h3>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <span className="w-4 h-4 rounded-full bg-blue-500 mr-2"></span>
+                <span className="text-sm">Custody Transfer</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 rounded-full bg-red-500 mr-2"></span>
+                <span className="text-sm">Appointment</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 rounded-full bg-green-500 mr-2"></span>
+                <span className="text-sm">Activity</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></span>
+                <span className="text-sm">School</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-4 h-4 rounded-full bg-gray-500 mr-2"></span>
+                <span className="text-sm">Other</span>
+              </div>
             </div>
           </div>
         </div>
         
-        <div className="calendar-main">
+        <div className="md:w-3/4 bg-white rounded-lg shadow-md p-4">
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

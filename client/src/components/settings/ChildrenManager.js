@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import childrenService from '../../services/childrenService';
 import ChildrenList from './ChildrenList';
 import ChildModal from './ChildModal';
+import { FaChild, FaSpinner } from 'react-icons/fa';
 
 function ChildrenManager() {
   const [children, setChildren] = useState([]);
@@ -78,17 +79,33 @@ function ChildrenManager() {
   };
 
   return (
-    <div className="settings-section children-manager">
-      <h4>Manage Children</h4>
-      <p className="section-description">
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="flex items-center mb-4">
+        <FaChild className="text-primary mr-2" />
+        <h3 className="text-xl font-semibold text-gray-700">Manage Children</h3>
+      </div>
+      
+      <p className="text-gray-600 mb-6">
         Add and manage your children's information. This information will be used in the calendar and other features.
       </p>
       
-      {message && <div className="success-message">{message}</div>}
-      {error && <div className="error-message">{error}</div>}
+      {message && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-md">
+          {message}
+        </div>
+      )}
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
       
       {isLoading && !showChildModal ? (
-        <div className="loading">Loading children...</div>
+        <div className="flex items-center justify-center p-8 text-gray-500">
+          <FaSpinner className="animate-spin mr-2" />
+          <span>Loading children...</span>
+        </div>
       ) : (
         <ChildrenList 
           children={children}

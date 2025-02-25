@@ -52,47 +52,62 @@ function MainApp() {
   };
 
   return (
-    <>
+    <div className="flex h-screen bg-gray-50">
       <Header />
       <PartnerRequestNotification />
-      <div className="main-content">
-        <nav className="sidebar">
-          <div className="sidebar-header">
-            <FaHome className="sidebar-logo" />
-            <h2>CoParently</h2>
-          </div>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            <li>
-              <Link to="communication" className="nav-link">
-                <FaComments className="nav-icon" />
-                <span>Communication</span>
-              </Link>
-            </li>
-            <li>
-              <Link to="finances" className="nav-link">
-                <FaDollarSign className="nav-icon" />
-                <span>Finances</span>
-              </Link>
-            </li>
-            <li>
-              <Link to="calendar" className="nav-link">
-                <FaCalendarAlt className="nav-icon" />
-                <span>Calendar</span>
-              </Link>
-            </li>
-            <li>
-              <Link to="settings" className="nav-link">
-                <FaCog className="nav-icon" />
-                <span>Settings</span>
-              </Link>
-            </li>
-            <li>
-              <button onClick={handleLogout} className="logout-button">
-                Sign Out
-              </button>
-            </li>
-          </ul>
-        </nav>
+      
+      {/* Sidebar */}
+      <nav className="w-64 bg-primary text-white h-screen fixed left-0 top-0 pt-20 shadow-lg z-10">
+        <ul className="mt-6 px-4 space-y-2">
+          <li>
+            <Link 
+              to="communication" 
+              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-primary-dark transition-colors duration-200"
+            >
+              <FaComments className="text-lg" />
+              <span>Communication</span>
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="finances" 
+              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-primary-dark transition-colors duration-200"
+            >
+              <FaDollarSign className="text-lg" />
+              <span>Finances</span>
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="calendar" 
+              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-primary-dark transition-colors duration-200"
+            >
+              <FaCalendarAlt className="text-lg" />
+              <span>Calendar</span>
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="settings" 
+              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-primary-dark transition-colors duration-200"
+            >
+              <FaCog className="text-lg" />
+              <span>Settings</span>
+            </Link>
+          </li>
+          <li className="mt-8">
+            <button 
+              onClick={handleLogout} 
+              className="w-full flex items-center justify-center space-x-3 p-3 rounded-lg text-white bg-accent hover:bg-accent-dark transition-colors duration-200"
+            >
+              Sign Out
+            </button>
+          </li>
+        </ul>
+      </nav>
+      
+      {/* Main Content */}
+      <div className="ml-64 flex-1 p-6 pt-20">
         <Routes>
           <Route path="communication" element={<Communication />} />
           <Route path="finances" element={<Finances />} />
@@ -101,7 +116,7 @@ function MainApp() {
           <Route path="*" element={<Navigate to="communication" />} />
         </Routes>
       </div>
-    </>
+    </div>
   );
 }
 

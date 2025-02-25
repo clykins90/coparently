@@ -26,8 +26,15 @@ function FormInput({
   ...rest
 }) {
   return (
-    <div className="form-group">
-      {label && <label htmlFor={name}>{label}</label>}
+    <div className="mb-4">
+      {label && (
+        <label 
+          htmlFor={name} 
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          {label}
+        </label>
+      )}
       <input
         id={name}
         type={type}
@@ -36,10 +43,16 @@ function FormInput({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className={error ? 'input-error' : ''}
+        className={`appearance-none rounded-md relative block w-full px-3 py-2 border ${
+          error ? 'border-red-300' : 'border-gray-300'
+        } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary-light focus:z-10 transition-colors duration-200 ${
+          rest.className || ''
+        }`}
         {...rest}
       />
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="mt-1 text-sm text-red-600">{error}</div>
+      )}
     </div>
   );
 }
