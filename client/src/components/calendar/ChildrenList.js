@@ -1,18 +1,19 @@
 import React from 'react';
-import { FaChild, FaPlus } from 'react-icons/fa';
+import { FaChild, FaCog } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
-function ChildrenList({ children, onAddChild }) {
+function ChildrenList({ children }) {
   return (
     <div className="children-list">
       <div className="children-header">
         <h4>Children</h4>
-        <button 
-          className="add-child-btn" 
-          onClick={onAddChild}
-          title="Add Child"
+        <Link 
+          to="/app/settings" 
+          className="settings-link" 
+          title="Manage Children in Settings"
         >
-          <FaPlus />
-        </button>
+          <FaCog />
+        </Link>
       </div>
       
       {children.length > 0 ? (
@@ -33,12 +34,12 @@ function ChildrenList({ children, onAddChild }) {
       ) : (
         <div className="no-children">
           <p>No children added yet</p>
-          <button 
-            className="btn btn-sm btn-outline-primary" 
-            onClick={onAddChild}
+          <Link 
+            to="/app/settings" 
+            className="btn btn-sm btn-outline-primary"
           >
-            Add Child
-          </button>
+            Manage Children
+          </Link>
         </div>
       )}
     </div>

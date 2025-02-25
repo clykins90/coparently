@@ -20,6 +20,7 @@ const userRoutes = require('./routes/users');
 const partnerRoutes = require('./routes/partners');
 const messageRoutes = require('./routes/messages');
 const calendarRoutes = require('./routes/calendarRoutes');
+const childrenRoutes = require('./routes/children');
 
 const app = express();
 const server = http.createServer(app);
@@ -82,6 +83,7 @@ app.use('/api', userRoutes);
 app.use('/api', partnerRoutes);
 app.use('/api', messageRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/children', childrenRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

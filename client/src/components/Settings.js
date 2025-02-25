@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { partnerAPI } from '../services/api';
 import MessageFilterTester from './MessageFilterTester';
 import { formatPhoneNumber } from '../utils/validation';
+import ChildrenManager from './settings/ChildrenManager';
 
 function Settings() {
   const [partnerData, setPartnerData] = useState(null);
@@ -215,6 +216,8 @@ function Settings() {
         )}
         {message && <p className="success-message">{message}</p>}
       </div>
+
+      <ChildrenManager />
 
       <MessageFilterTester />
     </div>
