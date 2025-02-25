@@ -13,6 +13,9 @@ node_modules/
 *.log
 .env
 **/.env
+**/package-lock.json
+**/node_modules/.package-lock.json
+**/node_modules/.cache/
 
 # OS specific
 .DS_Store
