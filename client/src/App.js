@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import LinkPartner from './components/LinkPartner';
@@ -7,40 +7,23 @@ import Register from './components/Register';
 import ProfileUpdate from './components/ProfileUpdate';
 import TestAI from './TestAI';
 import LogoutConfirmation from './components/LogoutConfirmation';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import './styles.css';
 
 function App() {
   return (
     <Router>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 }
 
 function AppContent() {
   const location = useLocation();
-  const [user, setUser] = useState(null);
-  const [requiresProfile, setRequiresProfile] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    setLoading(true);
-    
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      const isComplete = parsedUser?.email?.trim();
-      setRequiresProfile(!isComplete);
-      setLoading(false);
-    } else {
-      setLoading(false);
-    }
-    
-    if (location.state?.requiresProfile === true) {
-      setRequiresProfile(true);
-    }
-  }, [location]);
+  const { user, loading } = useAuth();
+  const requiresProfile = user?.requiresProfile || false;
 
   if (loading) {
     return <div className="loading-screen">Loading...</div>;
@@ -49,10 +32,10 @@ function AppContent() {
   return (
     <div className="App">
       <Routes>
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/register" element={<Register setUser={setUser} />} />
-        <Route path="/link-partner" element={<LinkPartner user={user} />} />
-        <Route path="/profile" element={<ProfileUpdate user={user} />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/link-partner" element={<LinkPartner />} />
+        <Route path="/profile" element={<ProfileUpdate />} />
         <Route path="/logout" element={<LogoutConfirmation />} />
         <Route path="/test-ai" element={<TestAI />} />
         <Route 
@@ -63,7 +46,7 @@ function AppContent() {
                 <Navigate to="/profile" replace state={{ requiresProfile: true }} />
               ) : (
                 <div className="main-app">
-                  <MainApp user={user} />
+                  <MainApp />
                 </div>
               )
             ) : (

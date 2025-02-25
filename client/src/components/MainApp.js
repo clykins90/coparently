@@ -8,21 +8,33 @@ import {
   FaCog,
   FaHome 
 } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
+
 // Stub components for demonstration
 const Finances = () => <div><h3>Finances</h3></div>;
 const Calendar = () => <div><h3>Calendar</h3></div>;
-const Settings = ({ user }) => {
+const Settings = () => {
   const [partnerData, setPartnerData] = useState(null);
   const [profileData, setProfileData] = useState({
-    firstName: user.firstName || '',
-    lastName: user.lastName || '',
-    phone: user.phone || '',
-    email: user.email // Read-only
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: ''
   });
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  const { user, updateProfile } = useAuth();
 
   useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phone: user.phone || '',
+        email: user.email || '' // Read-only
+      });
+    }
+
     const fetchPartner = async () => {
       const response = await fetch(`/api/partner?userId=${user.id}`);
       const data = await response.json();
@@ -31,7 +43,7 @@ const Settings = ({ user }) => {
       }
     };
     fetchPartner();
-  }, [user.id]);
+  }, [user]);
 
   const handleUnlink = async () => {
     if (window.confirm('Are you sure you want to unlink your partner?')) {
@@ -48,25 +60,16 @@ const Settings = ({ user }) => {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          firstName: profileData.firstName,
-          lastName: profileData.lastName,
-          phone: profileData.phone
-        })
+      const result = await updateProfile({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        phone: profileData.phone
       });
-      const data = await response.json();
-      if (data.success) {
+      
+      if (result.success) {
         setMessage('Profile updated successfully');
-        localStorage.setItem('user', JSON.stringify({
-          ...user,
-          firstName: profileData.firstName,
-          lastName: profileData.lastName,
-          phone: profileData.phone
-        }));
+      } else {
+        setMessage('Failed to update profile: ' + result.message);
       }
     } catch (err) {
       setMessage('Failed to update profile');
@@ -139,12 +142,13 @@ const Settings = ({ user }) => {
 
 function MainApp() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user'));
+  const { user, logout } = useAuth();
 
   const handleLogout = async () => {
-    await fetch('/api/logout');
-    localStorage.clear();
-    navigate('/login', { state: { message: 'Logged out successfully' } });
+    const result = await logout();
+    if (result.success) {
+      navigate('/login', { state: { message: 'Logged out successfully' } });
+    }
   };
 
   return (
@@ -191,7 +195,7 @@ function MainApp() {
           <Route path="communication" element={<Communication />} />
           <Route path="finances" element={<Finances />} />
           <Route path="calendar" element={<Calendar />} />
-          <Route path="settings" element={<Settings user={user} />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="communication" />} />
         </Routes>
       </main>

@@ -1,32 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-function ProfileUpdate({ user, setUser }) {
+function ProfileUpdate() {
+  const { user, updateProfile } = useAuth();
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    phone: user?.phone || ''
+    firstName: '',
+    lastName: '',
+    phone: ''
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phone: user.phone || ''
+      });
+    }
+  }, [user]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          ...formData
-        })
-      });
-      const data = await response.json();
+      const result = await updateProfile(formData);
       
-      if (data.success) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setUser(data.user);
+      if (result.success) {
         navigate('/app');
+      } else {
+        setError(result.message || 'Profile update failed');
       }
     } catch (err) {
       setError('Profile update failed');

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-function LinkPartner({ user }) {
+function LinkPartner() {
   const [partnerEmail, setPartnerEmail] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleLink = async (e) => {
     e.preventDefault();

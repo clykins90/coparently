@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { FaHeart } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
-function Login({ setUser }) {
+function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
   const [successMessage, setSuccessMessage] = useState('');
+  const { login } = useAuth();
 
   // Test account credentials
   const testAccount = {
@@ -31,50 +34,32 @@ function Login({ setUser }) {
     
     // Test account bypass
     if (email === testAccount.email && password === testAccount.password) {
-      const user = { 
+      const userData = { 
         id: 1, 
         email,
         firstName: testAccount.firstName,
         lastName: testAccount.lastName,
-        phone: testAccount.phone
+        phone: testAccount.phone,
+        requiresProfile: true // Force profile check for test account
       };
-      setUser(user);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('user', JSON.stringify(userData));
       
       navigate('/app', { 
         state: { 
           requiresPartner: true, 
-          requiresProfile: true // Force profile check for test account
+          requiresProfile: true
         } 
       });
       return;
     }
 
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await response.json();
+      const result = await login(email, password);
       
-      if (data.success) {
-        const user = {
-          id: data.userId,
-          email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone
-        };
-        setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        navigate('/app', { 
-          state: { 
-            requiresPartner: data.requiresPartner,
-            requiresProfile: data.requiresProfile 
-          }
-        });
+      if (result.success) {
+        navigate('/app');
+      } else {
+        setError(result.message || 'Login failed');
       }
     } catch (err) {
       setError('Login failed');

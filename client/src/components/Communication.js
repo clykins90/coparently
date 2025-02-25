@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PartnerRequired from './PartnerRequired';
+import { useAuth } from '../context/AuthContext';
 
 function Communication() {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
-  const [user] = useState(JSON.parse(localStorage.getItem('user')));
   const [partnerId, setPartnerId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasPartner, setHasPartner] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!user) {
