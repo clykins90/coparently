@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { FaHeart } from 'react-icons/fa';
+import { FaHeart, FaGoogle } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import FormInput from './common/FormInput';
 import { validateLoginForm, formatErrorMessages } from '../utils/validation';
+import { authAPI } from '../services/api';
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -33,7 +34,31 @@ function Login() {
       // Clear location state after reading
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location, navigate]);
+    
+    // Check for error parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    if (errorParam) {
+      setError(`Authentication error. Please try again.`);
+      // Clean up the URL
+      navigate('/login', { replace: true });
+    }
+    
+    // Check for Google OAuth redirect data
+    const authData = urlParams.get('data');
+    
+    if (authData) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(authData));
+        if (userData.userId) {
+          login(null, null, userData); // Pass the user data directly to login
+          navigate('/app');
+        }
+      } catch (err) {
+        setError('Authentication failed. Please try again.');
+      }
+    }
+  }, [location, navigate, login]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -100,6 +125,10 @@ function Login() {
     }
   };
 
+  const handleGoogleLogin = () => {
+    authAPI.googleLogin();
+  };
+
   return (
     <div className="login-container">
       <div className="app-logo">
@@ -139,6 +168,18 @@ function Login() {
           {isSubmitting ? 'Logging in...' : 'Login'}
         </button>
       </form>
+      
+      <div className="social-login">
+        <p>Or sign in with:</p>
+        <button 
+          type="button" 
+          className="google-login-button" 
+          onClick={handleGoogleLogin}
+        >
+          <FaGoogle /> Sign in with Google
+        </button>
+      </div>
+      
       <p style={{ marginTop: '1rem' }}>
         Don't have an account? <Link to="/register">Register here</Link>
       </p>

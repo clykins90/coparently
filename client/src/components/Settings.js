@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { partnerAPI } from '../services/api';
 import MessageFilterTester from './MessageFilterTester';
+import { formatPhoneNumber } from '../utils/validation';
 
 function Settings() {
   const [partnerData, setPartnerData] = useState(null);
@@ -76,6 +77,14 @@ function Settings() {
     }
   };
 
+  const handlePhoneChange = (e) => {
+    const formattedPhone = formatPhoneNumber(e.target.value);
+    setProfileData({
+      ...profileData,
+      phone: formattedPhone
+    });
+  };
+
   return (
     <div>
       <h3>Account Settings</h3>
@@ -112,7 +121,8 @@ function Settings() {
             <input
               type="tel"
               value={profileData.phone}
-              onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+              onChange={handlePhoneChange}
+              placeholder="555-123-4567"
             />
           </div>
           <button type="submit" className="update-button">

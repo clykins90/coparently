@@ -20,6 +20,42 @@ export const isValidPhone = (phone) => {
   return phoneRegex.test(phone);
 };
 
+/**
+ * Format a phone number with dashes (e.g., 555-123-4567)
+ * @param {string} phone - The phone number to format
+ * @returns {string} - The formatted phone number
+ */
+export const formatPhoneNumber = (phone) => {
+  // Remove all non-digit characters
+  const digitsOnly = phone.replace(/\D/g, '');
+  
+  // Limit to 10 digits
+  const limitedDigits = digitsOnly.substring(0, 10);
+  
+  // Format with dashes
+  if (limitedDigits.length <= 3) {
+    return limitedDigits;
+  } else if (limitedDigits.length <= 6) {
+    return `${limitedDigits.substring(0, 3)}-${limitedDigits.substring(3)}`;
+  } else {
+    return `${limitedDigits.substring(0, 3)}-${limitedDigits.substring(3, 6)}-${limitedDigits.substring(6)}`;
+  }
+};
+
+/**
+ * Handle phone number input change with automatic formatting
+ * @param {Object} e - The input change event
+ * @param {Function} setFormData - Function to update form data
+ * @param {Object} formData - The current form data
+ */
+export const handlePhoneChange = (e, setFormData, formData) => {
+  const formattedPhone = formatPhoneNumber(e.target.value);
+  setFormData({
+    ...formData,
+    phone: formattedPhone
+  });
+};
+
 // Name validation (at least 2 characters, letters only)
 export const isValidName = (name) => {
   return name.trim().length >= 2 && /^[A-Za-z\s-']+$/.test(name);

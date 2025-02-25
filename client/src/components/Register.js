@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import FormInput from './common/FormInput';
-import { validateRegistrationForm, formatErrorMessages } from '../utils/validation';
+import { validateRegistrationForm, formatErrorMessages, handlePhoneChange } from '../utils/validation';
 import { FaHeart } from 'react-icons/fa';
 
 function Register() {
@@ -21,10 +21,16 @@ function Register() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    // Special handling for phone number
+    if (name === 'phone') {
+      handlePhoneChange(e, setFormData, formData);
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
     
     // Clear error for this field when user starts typing
     if (formErrors[name]) {

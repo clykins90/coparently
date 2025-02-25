@@ -7,6 +7,7 @@ import Register from './components/Register';
 import ProfileUpdate from './components/ProfileUpdate';
 import TestAI from './TestAI';
 import LogoutConfirmation from './components/LogoutConfirmation';
+import AuthSuccess from './components/AuthSuccess';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import './styles.css';
@@ -41,6 +42,7 @@ function AppContent() {
         <Route path="/profile" element={<ProfileUpdate />} />
         <Route path="/logout" element={<LogoutConfirmation />} />
         <Route path="/test-ai" element={<TestAI />} />
+        <Route path="/auth-success" element={<AuthSuccess />} />
         <Route 
           path="/app/*" 
           element={

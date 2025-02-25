@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { formatPhoneNumber } from '../utils/validation';
 
 function ProfileUpdate() {
   const { user, updateProfile } = useAuth();
@@ -21,6 +22,14 @@ function ProfileUpdate() {
       });
     }
   }, [user]);
+
+  const handlePhoneChange = (e) => {
+    const formattedPhone = formatPhoneNumber(e.target.value);
+    setFormData({
+      ...formData,
+      phone: formattedPhone
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,7 +74,8 @@ function ProfileUpdate() {
           <input
             type="tel"
             value={formData.phone}
-            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+            onChange={handlePhoneChange}
+            placeholder="555-123-4567"
             required
           />
         </div>
