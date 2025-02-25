@@ -466,3 +466,51 @@ textarea:disabled {
   box-shadow: 0 0 0 2px rgba(0, 119, 204, 0.2);
   outline: none;
 }
+
+/* Message Filter Tester Styles */
+.filter-results {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.result-section {
+  margin-bottom: 15px;
+}
+
+.result-section h5 {
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.message-box {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.blocked-message {
+  background-color: #ffebee;
+  border-color: #ffcdd2;
+}
+
+.modified-message {
+  background-color: #fff8e1;
+  border-color: #ffe082;
+}
+
+.unchanged-message {
+  background-color: #e8f5e9;
+  border-color: #c8e6c9;
+}
+
+.result-status {
+  font-weight: bold;
+  margin-top: 10px;
+  text-align: right;
+}

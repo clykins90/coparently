@@ -9,8 +9,31 @@ router.post('/conversations/:id/messages', async (req, res) => {
   try {
     const conversationId = req.params.id;
     const { senderId, content } = req.body;
+    
+    // Get recent conversation context (last 5 messages)
+    let conversationContext = null;
+    try {
+      const recentMessages = await Message.findAll({
+        where: { conversation_id: conversationId },
+        order: [['createdAt', 'DESC']],
+        limit: 5,
+        include: [{ model: User, as: 'sender', attributes: ['id', 'firstName'] }]
+      });
+      
+      if (recentMessages.length > 0) {
+        // Format messages for context
+        conversationContext = recentMessages.reverse().map(msg => {
+          const senderName = msg.sender ? msg.sender.firstName : 'User';
+          return `${senderName}: ${msg.content}`;
+        }).join('\n');
+      }
+    } catch (err) {
+      console.warn('Error fetching conversation context:', err);
+      // Continue without context if there's an error
+    }
+    
     // Filter/Rewrite the message if necessary
-    const filteredContent = await filterMessage(content);
+    const filteredContent = await filterMessage(content, conversationContext);
     if (filteredContent.status === 'blocked') {
       console.log("Message blocked:", content);
       return res.status(400).json({ error: filteredContent.message });
@@ -61,10 +84,15 @@ router.get('/conversations/:id/messages', async (req, res) => {
 // Test endpoint for filtering messages
 router.post('/test-filter', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, context } = req.body;
     console.log('TEST MESSAGE:', message);
-    const filtered = await filterMessage(message);
-    res.json({ original: message, filtered });
+    const filtered = await filterMessage(message, context);
+    res.json({ 
+      original: message, 
+      filtered,
+      wasModified: typeof filtered === 'string' && filtered !== message,
+      wasBlocked: filtered.status === 'blocked'
+    });
   } catch (err) {
     console.error('Test filter error:', err);
     res.status(500).json({ error: 'Filter test failed' });

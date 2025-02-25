@@ -114,10 +114,10 @@ export const messageAPI = {
       body: JSON.stringify({ senderId, content })
     }),
     
-  testFilter: (message) => 
+  testFilter: (message, context = null) => 
     apiRequest('/api/test-filter', {
       method: 'POST',
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ message, context })
     })
 };
 
