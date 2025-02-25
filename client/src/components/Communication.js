@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PartnerRequired from './PartnerRequired';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 
 function Communication() {
   const [message, setMessage] = useState('');
@@ -9,8 +10,10 @@ function Communication() {
   const [partnerId, setPartnerId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasPartner, setHasPartner] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { socket, connected, joinConversation, leaveConversation } = useSocket();
 
   useEffect(() => {
     if (!user) {
@@ -18,38 +21,66 @@ function Communication() {
       return;
     }
 
-    // Fetch partner ID from server
-    const fetchPartner = async () => {
-      const response = await fetch(`/api/partner?userId=${user.id}`);
-      const data = await response.json();
-      setHasPartner(data.success);
-      if (data.success) setPartnerId(data.partnerId);
-    };
-    
-    fetchPartner();
-
-    const fetchMessages = async () => {
+    // Fetch partner ID and conversation ID from server
+    const fetchPartnerAndConversation = async () => {
       try {
-        const response = await fetch(`/api/messages?userId=${user.id}`);
+        const response = await fetch(`/api/partner?userId=${user.id}`);
         const data = await response.json();
-        setChatHistory(data.messages);
+        setHasPartner(data.success);
+        if (data.success) {
+          setPartnerId(data.partnerId);
+          setConversationId(data.conversationId);
+        }
       } catch (err) {
-        console.error('Error fetching messages:', err);
+        console.error('Error fetching partner:', err);
       }
     };
     
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 2000); // Refresh every 2 seconds
-    return () => clearInterval(interval);
+    fetchPartnerAndConversation();
   }, [user, navigate]);
 
-  const handleSend = async () => {
-    if (isLoading) return;
-    
-    if (!partnerId) {
-      alert('No partner linked!');
-      return;
+  // Join conversation room when conversation ID is available
+  useEffect(() => {
+    if (conversationId && connected) {
+      joinConversation(conversationId);
+      
+      // Fetch initial messages
+      const fetchMessages = async () => {
+        try {
+          const response = await fetch(`/api/conversations/${conversationId}/messages`);
+          const data = await response.json();
+          setChatHistory(data.messages);
+        } catch (err) {
+          console.error('Error fetching messages:', err);
+        }
+      };
+      
+      fetchMessages();
+      
+      // Clean up when component unmounts
+      return () => {
+        leaveConversation(conversationId);
+      };
     }
+  }, [conversationId, connected, joinConversation, leaveConversation]);
+
+  // Listen for new messages
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleNewMessage = (newMessage) => {
+      setChatHistory(prevMessages => [...prevMessages, newMessage]);
+    };
+    
+    socket.on('new_message', handleNewMessage);
+    
+    return () => {
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket]);
+
+  const handleSend = async () => {
+    if (isLoading || !conversationId) return;
     
     if (message.trim().length === 0) {
       alert('Cannot send empty message');
@@ -59,13 +90,12 @@ function Communication() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/filter', {
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: message,
           senderId: user.id,
-          receiverId: partnerId
+          content: message
         })
       });
       
@@ -76,19 +106,10 @@ function Communication() {
         return;
       }
 
-      const data = await response.json();
-      if (data.filteredMessage.includes('[BLOCKED]')) {
-        throw new Error('Invalid message passed through filter');
-      }
-      
-      setChatHistory([...chatHistory, {
-        senderId: user.id,
-        content: data.filteredMessage,
-        timestamp: new Date().toISOString()
-      }]);
+      // Clear the input field (the message will be added to the chat via socket)
       setMessage('');
     } catch (err) {
-      console.error('Error filtering message:', err);
+      console.error('Error sending message:', err);
       alert('Failed to send message. Please try again.');
     } finally {
       setIsLoading(false);
@@ -106,14 +127,21 @@ function Communication() {
   return (
     <div className="communication-container">
       <h3>Communication</h3>
+      <div className="connection-status">
+        {connected ? (
+          <span className="status-connected">Connected</span>
+        ) : (
+          <span className="status-disconnected">Disconnected</span>
+        )}
+      </div>
       <div className="chat-window">
         {chatHistory.map((msg, index) => (
           <div
             key={index}
-            className={`message-bubble ${msg.senderId === user.id ? 'sender' : 'receiver'}`}
+            className={`message-bubble ${msg.sender_id === user.id ? 'sender' : 'receiver'}`}
           >
             <div className="message-text">{msg.content}</div>
-            <div className="message-timestamp">{formatTimestamp(msg.timestamp)}</div>
+            <div className="message-timestamp">{formatTimestamp(msg.createdAt || msg.timestamp)}</div>
           </div>
         ))}
       </div>
@@ -127,14 +155,14 @@ function Communication() {
             handleSend();
           }
         }}
-        disabled={isLoading}
+        disabled={isLoading || !connected}
         rows={4}
         style={{ width: '100%', marginTop: '1rem' }}
       />
       <button 
         onClick={handleSend} 
         style={{ marginTop: '0.5rem' }}
-        disabled={isLoading}
+        disabled={isLoading || !connected}
       >
         {isLoading ? (
           <div className="spinner"></div>

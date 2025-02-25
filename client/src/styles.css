@@ -388,3 +388,18 @@ textarea:disabled {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Add these styles for the connection status */
+.connection-status {
+  text-align: right;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+}
+
+.status-connected {
+  color: green;
+}
+
+.status-disconnected {
+  color: red;
+}

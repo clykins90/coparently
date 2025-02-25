@@ -20,6 +20,19 @@ router.post('/conversations/:id/messages', async (req, res) => {
       sender_id: senderId,
       content: filteredContent
     });
+    
+    // Get the io instance
+    const io = req.app.get('io');
+    
+    // Emit the new message to all clients in the conversation room
+    if (io) {
+      const messageWithSender = {
+        ...message.toJSON(),
+        sender: { id: senderId }
+      };
+      io.to(`conversation_${conversationId}`).emit('new_message', messageWithSender);
+    }
+    
     console.log("Message stored:", message.toJSON());
     res.json({ success: true, message });
   } catch (err) {
