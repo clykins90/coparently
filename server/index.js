@@ -40,10 +40,3 @@ sequelize.sync().then(() => {
   console.error("💥 CRITICAL DATABASE ERROR 💥", err);
   process.exit(1);
 });
-
-// Add to User model
-User.beforeCreate(async (user) => {
-  if (user.password) {
-    user.hashed_password = await bcrypt.hash(user.password, 10);
-  }
-});

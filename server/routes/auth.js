@@ -10,7 +10,8 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
     
-    if (user && user.hashed_password === password) { // Note: We'll fix this password comparison in step 2
+    // Check if user exists and password matches
+    if (user && await bcrypt.compare(password, user.hashed_password)) {
       // Check for linked partner conversation (if exists)
       const partnerConversation = await Conversation.findOne({
         where: { conversation_type: 'linked_partner' },
@@ -55,13 +56,17 @@ router.post('/register', async (req, res) => {
       console.warn("Attempted registration with existing email:", email);
       return res.status(400).json({ success: false, message: "Email already exists" });
     }
+    
+    // Hash the password before storing
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
     const newUser = await User.create({
       username: email, // or another logic to generate a username
       email,
       first_name: firstName,
       last_name: lastName,
       phone,
-      hashed_password: password
+      hashed_password: hashedPassword
     });
     console.log("New user registered:", newUser.toJSON());
     res.json({ success: true, user: newUser });
