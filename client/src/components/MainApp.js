@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Communication from './Communication';
 import Finances from './Finances';
@@ -12,10 +12,35 @@ import {
   FaHome 
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { authAPI } from '../services/api';
 
 function MainApp() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  // Check for token on component mount
+  useEffect(() => {
+    const checkToken = async () => {
+      // If user is logged in but no token exists, try to get a new one
+      if (user && !localStorage.getItem('token')) {
+        console.log('User is logged in but no token found. Attempting to get a new token...');
+        try {
+          // Call the auth check endpoint which should return a token
+          const authCheck = await authAPI.checkAuth();
+          if (authCheck.authenticated && authCheck.token) {
+            console.log('Successfully retrieved new token');
+            localStorage.setItem('token', authCheck.token);
+          } else {
+            console.warn('Failed to get a new token. You may need to log in again.');
+          }
+        } catch (error) {
+          console.error('Error checking authentication:', error);
+        }
+      }
+    };
+    
+    checkToken();
+  }, [user]);
 
   const handleLogout = async () => {
     const result = await logout();

@@ -5,6 +5,14 @@
 const API_URL = process.env.REACT_APP_API_URL || '';
 
 /**
+ * Get the JWT token from localStorage
+ * @returns {string|null} - The JWT token or null if not found
+ */
+const getToken = () => {
+  return localStorage.getItem('token');
+};
+
+/**
  * Make a request to the API
  * @param {string} endpoint - The API endpoint to request
  * @param {Object} options - The fetch options
@@ -19,10 +27,17 @@ async function apiRequest(endpoint, options = {}) {
     ...options.headers
   };
   
+  // Add authorization header if token exists
+  const token = getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   try {
     const response = await fetch(url, {
       ...options,
-      headers
+      headers,
+      credentials: 'include' // Include credentials for session cookies
     });
     
     // Handle non-JSON responses
@@ -50,11 +65,19 @@ async function apiRequest(endpoint, options = {}) {
 
 // Auth API
 export const authAPI = {
-  login: (email, password) => 
-    apiRequest('/api/login', {
+  login: async (email, password) => {
+    const data = await apiRequest('/api/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
-    }),
+    });
+    
+    // Store token in localStorage if available
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+    }
+    
+    return data;
+  },
     
   register: (userData) => 
     apiRequest('/api/register', {
@@ -62,10 +85,26 @@ export const authAPI = {
       body: JSON.stringify(userData)
     }),
     
-  logout: () => 
-    apiRequest('/api/logout', {
+  logout: () => {
+    // Clear token from localStorage
+    localStorage.removeItem('token');
+    
+    return apiRequest('/api/logout', {
       method: 'POST'
-    })
+    });
+  },
+    
+  checkAuth: () =>
+    apiRequest('/api/check', {
+      method: 'GET'
+    }),
+    
+  googleLogin: () => {
+    const baseUrl = API_URL || 'http://localhost:3001';
+    const googleAuthUrl = `${baseUrl}/auth/google`;
+    window.location.href = googleAuthUrl;
+    return Promise.resolve({ success: true });
+  }
 };
 
 // User API

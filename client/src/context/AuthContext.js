@@ -22,8 +22,33 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Login function
-  const login = async (email, password) => {
+  const login = async (email, password, googleUserData = null) => {
     try {
+      // If googleUserData is provided, use that instead of making an API call
+      if (googleUserData) {
+        const userData = {
+          id: googleUserData.userId,
+          firstName: googleUserData.firstName,
+          lastName: googleUserData.lastName,
+          email: googleUserData.email,
+          phone: googleUserData.phone,
+          hasPartner: googleUserData.hasPartner,
+          requiresProfile: googleUserData.requiresProfile,
+          authProvider: googleUserData.authProvider,
+          profilePicture: googleUserData.profilePicture
+        };
+        
+        // Store token if provided
+        if (googleUserData.token) {
+          localStorage.setItem('token', googleUserData.token);
+        }
+        
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        return { success: true };
+      }
+      
+      // Regular email/password login
       const data = await authAPI.login(email, password);
       
       if (data.success) {
@@ -34,8 +59,12 @@ export function AuthProvider({ children }) {
           email: data.email,
           phone: data.phone,
           hasPartner: data.hasPartner,
-          requiresProfile: data.requiresProfile
+          requiresProfile: data.requiresProfile,
+          authProvider: data.authProvider || 'local',
+          profilePicture: data.profilePicture
         };
+        
+        // Token is stored in localStorage by the authAPI.login function
         
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
@@ -68,7 +97,7 @@ export function AuthProvider({ children }) {
   // Logout function
   const logout = async () => {
     try {
-      await authAPI.logout();
+      await authAPI.logout(); // This will clear the token from localStorage
       localStorage.removeItem('user');
       setUser(null);
       return { success: true };
@@ -100,6 +129,11 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Check if user is authenticated with Google
+  const isGoogleAuthenticated = () => {
+    return user && user.authProvider === 'google';
+  };
+
   // Value object that will be passed to any consumer components
   const value = {
     user,
@@ -107,7 +141,8 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    updateProfile
+    updateProfile,
+    isGoogleAuthenticated
   };
 
   return (

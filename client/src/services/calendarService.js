@@ -1,6 +1,15 @@
 /**
  * Service for handling calendar-related API calls
  */
+
+/**
+ * Get the JWT token from localStorage
+ * @returns {string|null} - The JWT token or null if not found
+ */
+const getToken = () => {
+  return localStorage.getItem('token');
+};
+
 const calendarService = {
   /**
    * Get events for a date range
@@ -10,12 +19,19 @@ const calendarService = {
    */
   getEvents: async (start, end) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/calendar/events?start=${start}&end=${end}`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       if (!response.ok) {
@@ -37,12 +53,19 @@ const calendarService = {
    */
   createEvent: async (eventData) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/calendar/events', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(eventData)
       });
       
@@ -66,12 +89,19 @@ const calendarService = {
    */
   updateEvent: async (eventId, eventData) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/calendar/events/${eventId}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(eventData)
       });
       
@@ -94,12 +124,19 @@ const calendarService = {
    */
   deleteEvent: async (eventId) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/calendar/events/${eventId}`, {
         method: 'DELETE',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       if (!response.ok) {
@@ -120,12 +157,19 @@ const calendarService = {
    */
   getCustodySchedules: async () => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/calendar/custody-schedules', {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       if (!response.ok) {
@@ -147,12 +191,19 @@ const calendarService = {
    */
   createCustodySchedule: async (scheduleData) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/calendar/custody-schedules', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(scheduleData)
       });
       
@@ -176,12 +227,19 @@ const calendarService = {
    */
   updateCustodyScheduleStatus: async (scheduleId, status) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/calendar/custody-schedules/${scheduleId}/status`, {
         method: 'PUT',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({ status })
       });
       

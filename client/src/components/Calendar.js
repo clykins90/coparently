@@ -27,13 +27,19 @@ function Calendar() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   // Fetch events when calendar date range changes
   const handleDatesSet = async (dateInfo) => {
     try {
+      console.log("Fetching events for date range:", dateInfo.startStr, "to", dateInfo.endStr);
+      console.log("Token available:", !!localStorage.getItem('token'));
+      
       const start = dateInfo.startStr;
       const end = dateInfo.endStr;
       const fetchedEvents = await calendarService.getEvents(start, end);
+      
+      console.log("Events fetched successfully:", fetchedEvents);
       
       // Transform events for FullCalendar
       const formattedEvents = fetchedEvents.map(event => ({
@@ -63,6 +69,11 @@ function Calendar() {
       setEvents(formattedEvents);
     } catch (err) {
       console.error('Error fetching events:', err);
+      setDebugInfo({
+        message: err.message,
+        stack: err.stack,
+        token: localStorage.getItem('token') ? 'Token exists' : 'No token'
+      });
       setError('Failed to load events. Please try again later.');
     }
   };
@@ -92,24 +103,36 @@ function Calendar() {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
+        console.log("Fetching initial data...");
+        console.log("User:", user);
+        console.log("Token available:", !!localStorage.getItem('token'));
+        
         // Fetch children
         const fetchedChildren = await childService.getChildren();
+        console.log("Children fetched successfully:", fetchedChildren);
         setChildren(fetchedChildren);
         
         // Fetch custody schedules
         const fetchedSchedules = await calendarService.getCustodySchedules();
+        console.log("Custody schedules fetched successfully:", fetchedSchedules);
         setCustodySchedules(fetchedSchedules);
         
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching initial data:', err);
+        setDebugInfo({
+          message: err.message,
+          stack: err.stack,
+          token: localStorage.getItem('token') ? 'Token exists' : 'No token',
+          user: user ? 'User exists' : 'No user'
+        });
         setError('Failed to load data. Please try again later.');
         setIsLoading(false);
       }
     };
     
     fetchInitialData();
-  }, []);
+  }, [user]);
 
   // Handle date click to create a new event
   const handleDateClick = (info) => {
@@ -277,7 +300,17 @@ function Calendar() {
   }
 
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <div className="error-message">
+        <p>{error}</p>
+        {debugInfo && (
+          <details>
+            <summary>Debug Information</summary>
+            <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+          </details>
+        )}
+      </div>
+    );
   }
 
   return (

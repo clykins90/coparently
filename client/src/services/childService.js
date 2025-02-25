@@ -1,6 +1,15 @@
 /**
  * Service for handling child-related API calls
  */
+
+/**
+ * Get the JWT token from localStorage
+ * @returns {string|null} - The JWT token or null if not found
+ */
+const getToken = () => {
+  return localStorage.getItem('token');
+};
+
 const childService = {
   /**
    * Get all children for the current user
@@ -8,12 +17,19 @@ const childService = {
    */
   getChildren: async () => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/calendar/children', {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       if (!response.ok) {
@@ -35,12 +51,19 @@ const childService = {
    */
   getChildById: async (childId) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/calendar/children/${childId}`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       if (!response.ok) {
@@ -62,12 +85,19 @@ const childService = {
    */
   createChild: async (childData) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/calendar/children', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(childData)
       });
       
@@ -91,12 +121,19 @@ const childService = {
    */
   updateChild: async (childId, childData) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/calendar/children/${childId}`, {
         method: 'PUT',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(childData)
       });
       
@@ -119,12 +156,19 @@ const childService = {
    */
   deleteChild: async (childId) => {
     try {
+      const token = getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/calendar/children/${childId}`, {
         method: 'DELETE',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
       
       if (!response.ok) {

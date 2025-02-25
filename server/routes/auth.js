@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { User, Conversation } = require('../models');
 const bcrypt = require('bcrypt');
+const passport = require('passport');
+const jwt = require('jsonwebtoken');
 
 // Endpoint: Login
 router.post('/login', async (req, res) => {
-  console.log("Login attempt:", req.body);
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
@@ -26,6 +27,14 @@ router.post('/login', async (req, res) => {
         user.first_name && 
         user.last_name && 
         user.email;
+      
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id },
+        process.env.JWT_SECRET || 'your_jwt_secret_key',
+        { expiresIn: '24h' }
+      );
+      
       res.json({ 
         success: true, 
         userId: user.id,
@@ -34,10 +43,12 @@ router.post('/login', async (req, res) => {
         email: user.email,
         phone: user.phone,
         hasPartner: hasPartner,
-        requiresProfile: !isProfileComplete
+        requiresProfile: !isProfileComplete,
+        authProvider: user.auth_provider,
+        profilePicture: user.google_profile_picture,
+        token: token // Add JWT token to response
       });
     } else {
-      console.warn("Invalid credentials for email:", email);
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   } catch (err) {
@@ -48,12 +59,10 @@ router.post('/login', async (req, res) => {
 
 // Endpoint: Register (create a new user)
 router.post('/register', async (req, res) => {
-  console.log("Register request received:", req.body);
   try {
     const { firstName, lastName, email, phone, password } = req.body;
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      console.warn("Attempted registration with existing email:", email);
       return res.status(400).json({ success: false, message: "Email already exists" });
     }
     
@@ -66,9 +75,10 @@ router.post('/register', async (req, res) => {
       first_name: firstName,
       last_name: lastName,
       phone,
-      hashed_password: hashedPassword
+      hashed_password: hashedPassword,
+      auth_provider: 'local'
     });
-    console.log("New user registered:", newUser.toJSON());
+    
     res.json({ success: true, user: newUser });
   } catch (err) {
     console.error("Error in /api/register:", err);
@@ -78,8 +88,108 @@ router.post('/register', async (req, res) => {
 
 // Endpoint: Logout (simulated)
 router.post('/logout', (req, res) => {
-  console.log("Logout request received.");
+  if (req.session) {
+    req.session.destroy();
+  }
   res.json({ success: true });
+});
+
+// Google OAuth routes
+router.get('/google', (req, res, next) => {
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+
+router.get('/google/callback', 
+  (req, res, next) => {
+    passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login?error=auth_failed' })(req, res, next);
+  },
+  async (req, res) => {
+    try {
+      // User is authenticated and available in req.user
+      const user = req.user;
+      
+      if (!user) {
+        return res.redirect('http://localhost:3000/login?error=no_user_data');
+      }
+      
+      // Check for linked partner conversation (if exists)
+      const partnerConversation = await Conversation.findOne({
+        where: { conversation_type: 'linked_partner' },
+        include: [{
+          model: User,
+          through: { attributes: [] },
+          where: { id: user.id }
+        }]
+      });
+      const hasPartner = !!partnerConversation;
+      const isProfileComplete = 
+        user.first_name && 
+        user.last_name && 
+        user.email;
+      
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id },
+        process.env.JWT_SECRET || 'your_jwt_secret_key',
+        { expiresIn: '24h' }
+      );
+      
+      // Redirect to frontend with user info
+      const userInfo = {
+        userId: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email,
+        phone: user.phone,
+        hasPartner: hasPartner,
+        requiresProfile: !isProfileComplete,
+        authProvider: user.auth_provider,
+        profilePicture: user.google_profile_picture,
+        token: token // Add JWT token to response
+      };
+      
+      // Use the client URL for redirection
+      const clientUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://your-production-domain.com' 
+        : 'http://localhost:3000';
+      
+      const redirectUrl = `${clientUrl}/auth-success?data=${encodeURIComponent(JSON.stringify(userInfo))}`;
+      
+      // Redirect to frontend with token or session
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Error in Google callback:', error);
+      res.redirect('http://localhost:3000/login?error=server_error');
+    }
+  }
+);
+
+// Endpoint: Check if user is authenticated
+router.get('/check', (req, res) => {
+  if (req.isAuthenticated()) {
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: req.user.id },
+      process.env.JWT_SECRET || 'your_jwt_secret_key',
+      { expiresIn: '24h' }
+    );
+    
+    res.json({ 
+      authenticated: true, 
+      token: token,
+      user: {
+        userId: req.user.id,
+        firstName: req.user.first_name,
+        lastName: req.user.last_name,
+        email: req.user.email,
+        phone: req.user.phone,
+        authProvider: req.user.auth_provider,
+        profilePicture: req.user.google_profile_picture
+      }
+    });
+  } else {
+    res.json({ authenticated: false });
+  }
 });
 
 module.exports = router; 
