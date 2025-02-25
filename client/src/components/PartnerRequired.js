@@ -7,8 +7,8 @@ function PartnerRequired() {
       <h3>Partner Required</h3>
       <p>This feature requires a linked partner to use.</p>
       <p>You can invite your partner to join and link with you:</p>
-      <Link to="/link-partner" className="invite-button">
-        Invite Partner
+      <Link to="/add-partner" className="invite-button">
+        Add Partner
       </Link>
     </div>
   );

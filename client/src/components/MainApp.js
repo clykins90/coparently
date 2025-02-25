@@ -4,6 +4,8 @@ import Communication from './Communication';
 import Finances from './Finances';
 import Calendar from './Calendar';
 import Settings from './Settings';
+import PartnerRequestNotification from './PartnerRequestNotification';
+import Header from './Header';
 import { 
   FaComments, 
   FaDollarSign, 
@@ -50,45 +52,47 @@ function MainApp() {
   };
 
   return (
-    <div>
-      <nav className="sidebar">
-        <div className="sidebar-header">
-          <FaHome className="sidebar-logo" />
-          <h2>CoParently</h2>
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          <li>
-            <Link to="communication" className="nav-link">
-              <FaComments className="nav-icon" />
-              <span>Communication</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="finances" className="nav-link">
-              <FaDollarSign className="nav-icon" />
-              <span>Finances</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="calendar" className="nav-link">
-              <FaCalendarAlt className="nav-icon" />
-              <span>Calendar</span>
-            </Link>
-          </li>
-          <li>
-            <Link to="settings" className="nav-link">
-              <FaCog className="nav-icon" />
-              <span>Settings</span>
-            </Link>
-          </li>
-          <li>
-            <button onClick={handleLogout} className="logout-button">
-              Sign Out
-            </button>
-          </li>
-        </ul>
-      </nav>
-      <main className="main-content">
+    <>
+      <Header />
+      <PartnerRequestNotification />
+      <div className="main-content">
+        <nav className="sidebar">
+          <div className="sidebar-header">
+            <FaHome className="sidebar-logo" />
+            <h2>CoParently</h2>
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            <li>
+              <Link to="communication" className="nav-link">
+                <FaComments className="nav-icon" />
+                <span>Communication</span>
+              </Link>
+            </li>
+            <li>
+              <Link to="finances" className="nav-link">
+                <FaDollarSign className="nav-icon" />
+                <span>Finances</span>
+              </Link>
+            </li>
+            <li>
+              <Link to="calendar" className="nav-link">
+                <FaCalendarAlt className="nav-icon" />
+                <span>Calendar</span>
+              </Link>
+            </li>
+            <li>
+              <Link to="settings" className="nav-link">
+                <FaCog className="nav-icon" />
+                <span>Settings</span>
+              </Link>
+            </li>
+            <li>
+              <button onClick={handleLogout} className="logout-button">
+                Sign Out
+              </button>
+            </li>
+          </ul>
+        </nav>
         <Routes>
           <Route path="communication" element={<Communication />} />
           <Route path="finances" element={<Finances />} />
@@ -96,8 +100,8 @@ function MainApp() {
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="communication" />} />
         </Routes>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
 

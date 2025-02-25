@@ -124,6 +124,32 @@ export const partnerAPI = {
   getPartner: (userId) => 
     apiRequest(`/api/partner?userId=${userId}`),
     
+  checkPartner: (email) =>
+    apiRequest(`/api/check-partner?email=${encodeURIComponent(email)}`),
+    
+  requestPartner: (userId, partnerEmail) => 
+    apiRequest('/api/request-partner', {
+      method: 'POST',
+      body: JSON.stringify({ userId, partnerEmail })
+    }),
+    
+  getPendingRequests: (userId) =>
+    apiRequest(`/api/pending-requests?userId=${userId}`),
+    
+  getOutgoingRequests: (userId) =>
+    apiRequest(`/api/outgoing-requests?userId=${userId}`),
+    
+  respondToRequest: (requestId, userId, accept) =>
+    apiRequest('/api/respond-request', {
+      method: 'POST',
+      body: JSON.stringify({ requestId, userId, accept })
+    }),
+    
+  cancelRequest: (requestId, userId) =>
+    apiRequest(`/api/cancel-request/${requestId}?userId=${userId}`, {
+      method: 'DELETE'
+    }),
+    
   linkPartner: (userId, partnerEmail) => 
     apiRequest('/api/link-partner', {
       method: 'POST',

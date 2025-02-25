@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import LinkPartner from './components/LinkPartner';
+import AddPartner from './components/AddPartner';
+import LinkExistingPartner from './components/LinkExistingPartner';
+import InvitePartner from './components/InvitePartner';
 import MainApp from './components/MainApp';
 import Register from './components/Register';
 import ProfileUpdate from './components/ProfileUpdate';
@@ -39,6 +42,15 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/link-partner" element={<LinkPartner />} />
+        <Route path="/add-partner" element={
+          user ? <AddPartner /> : <Navigate to="/login" />
+        } />
+        <Route path="/link-existing-partner" element={
+          user ? <LinkExistingPartner /> : <Navigate to="/login" />
+        } />
+        <Route path="/invite-partner" element={
+          user ? <InvitePartner /> : <Navigate to="/login" />
+        } />
         <Route path="/profile" element={<ProfileUpdate />} />
         <Route path="/logout" element={<LogoutConfirmation />} />
         <Route path="/test-ai" element={<TestAI />} />

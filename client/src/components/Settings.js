@@ -7,6 +7,7 @@ import { formatPhoneNumber } from '../utils/validation';
 
 function Settings() {
   const [partnerData, setPartnerData] = useState(null);
+  const [outgoingRequests, setOutgoingRequests] = useState([]);
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -14,6 +15,7 @@ function Settings() {
     email: ''
   });
   const [message, setMessage] = useState('');
+  const [cancellingRequestId, setCancellingRequestId] = useState(null);
   const navigate = useNavigate();
   const { user, updateProfile } = useAuth();
 
@@ -38,8 +40,20 @@ function Settings() {
       }
     };
     
+    const fetchOutgoingRequests = async () => {
+      try {
+        const data = await partnerAPI.getOutgoingRequests(user.id);
+        if (data.success) {
+          setOutgoingRequests(data.requests);
+        }
+      } catch (err) {
+        console.error('Error fetching outgoing requests:', err);
+      }
+    };
+    
     if (user) {
       fetchPartner();
+      fetchOutgoingRequests();
     }
   }, [user]);
 
@@ -54,6 +68,27 @@ function Settings() {
         }
       } catch (err) {
         setMessage('Failed to unlink partner');
+      }
+    }
+  };
+
+  const handleCancelRequest = async (requestId) => {
+    if (window.confirm('Are you sure you want to cancel this request?')) {
+      try {
+        setCancellingRequestId(requestId);
+        const data = await partnerAPI.cancelRequest(requestId, user.id);
+        if (data.success) {
+          setMessage('Request canceled successfully');
+          // Remove the canceled request from the list
+          setOutgoingRequests(outgoingRequests.filter(request => request.id !== requestId));
+        } else {
+          setMessage('Failed to cancel request');
+        }
+      } catch (err) {
+        console.error('Error canceling request:', err);
+        setMessage('Failed to cancel request');
+      } finally {
+        setCancellingRequestId(null);
       }
     }
   };
@@ -141,8 +176,42 @@ function Settings() {
               Unlink Partner
             </button>
           </>
+        ) : outgoingRequests.length > 0 ? (
+          <>
+            <h5>Pending Link Requests</h5>
+            <ul className="outgoing-requests-list">
+              {outgoingRequests.map(request => (
+                <li key={request.id} className="outgoing-request-item">
+                  {request.status === 'invited' ? (
+                    <>
+                      <p>
+                        You sent an invitation to <strong>{request.recipient.email}</strong>
+                      </p>
+                      <p className="request-status">Status: <span className="invited-status">Invitation Sent</span></p>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        You sent a link request to <strong>{request.recipient.first_name} {request.recipient.last_name}</strong> ({request.recipient.email})
+                      </p>
+                      <p className="request-status">Status: <span className="pending-status">Pending</span></p>
+                    </>
+                  )}
+                  <div className="request-actions">
+                    <button 
+                      onClick={() => handleCancelRequest(request.id)} 
+                      className="danger-button"
+                      disabled={cancellingRequestId === request.id}
+                    >
+                      {cancellingRequestId === request.id ? 'Cancelling...' : 'Cancel Request'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
         ) : (
-          <p>No partner linked. <Link to="/link-partner">Link a partner</Link></p>
+          <p>No partner linked. <Link to="/add-partner">Add a partner</Link></p>
         )}
         {message && <p className="success-message">{message}</p>}
       </div>

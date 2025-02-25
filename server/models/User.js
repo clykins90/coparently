@@ -91,6 +91,17 @@ module.exports = (sequelize) => {
       otherKey: 'schedule_id',
       as: 'custodySchedules'
     });
+    
+    // Add associations for partner requests
+    User.hasMany(models.PartnerRequest, {
+      foreignKey: 'requester_id',
+      as: 'sentPartnerRequests'
+    });
+    
+    User.hasMany(models.PartnerRequest, {
+      foreignKey: 'recipient_id',
+      as: 'receivedPartnerRequests'
+    });
   };
 
   return User;
