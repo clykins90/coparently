@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { partnerAPI } from '../services/api';
 
 function LinkPartner() {
   const [partnerEmail, setPartnerEmail] = useState('');
@@ -11,12 +12,7 @@ function LinkPartner() {
   const handleLink = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/invite-partner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, partnerEmail })
-      });
-      const data = await response.json();
+      const data = await partnerAPI.invitePartner(user.id, partnerEmail);
       
       if (data.success) {
         setMessage(data.message);

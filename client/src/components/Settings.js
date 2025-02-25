@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { partnerAPI } from '../services/api';
 
 function Settings() {
   const [partnerData, setPartnerData] = useState(null);
@@ -25,23 +26,32 @@ function Settings() {
     }
 
     const fetchPartner = async () => {
-      const response = await fetch(`/api/partner?userId=${user.id}`);
-      const data = await response.json();
-      if (data.success) {
-        setPartnerData(data);
+      try {
+        const data = await partnerAPI.getPartner(user.id);
+        if (data.success) {
+          setPartnerData(data);
+        }
+      } catch (err) {
+        console.error('Error fetching partner:', err);
       }
     };
-    fetchPartner();
+    
+    if (user) {
+      fetchPartner();
+    }
   }, [user]);
 
   const handleUnlink = async () => {
     if (window.confirm('Are you sure you want to unlink your partner?')) {
-      const response = await fetch(`/api/partner/${user.id}`, { method: 'DELETE' });
-      const data = await response.json();
-      if (data.success) {
-        setMessage('Partner unlinked successfully');
-        setPartnerData(null);
-        localStorage.removeItem('partnerLinked');
+      try {
+        const data = await partnerAPI.unlinkPartner(user.id);
+        if (data.success) {
+          setMessage('Partner unlinked successfully');
+          setPartnerData(null);
+          localStorage.removeItem('partnerLinked');
+        }
+      } catch (err) {
+        setMessage('Failed to unlink partner');
       }
     }
   };

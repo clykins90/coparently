@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PartnerRequired from './PartnerRequired';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { partnerAPI, messageAPI } from '../services/api';
 
 function Communication() {
   const [message, setMessage] = useState('');
@@ -24,8 +25,7 @@ function Communication() {
     // Fetch partner ID and conversation ID from server
     const fetchPartnerAndConversation = async () => {
       try {
-        const response = await fetch(`/api/partner?userId=${user.id}`);
-        const data = await response.json();
+        const data = await partnerAPI.getPartner(user.id);
         setHasPartner(data.success);
         if (data.success) {
           setPartnerId(data.partnerId);
@@ -47,8 +47,7 @@ function Communication() {
       // Fetch initial messages
       const fetchMessages = async () => {
         try {
-          const response = await fetch(`/api/conversations/${conversationId}/messages`);
-          const data = await response.json();
+          const data = await messageAPI.getMessages(conversationId);
           setChatHistory(data.messages);
         } catch (err) {
           console.error('Error fetching messages:', err);
@@ -90,18 +89,10 @@ function Communication() {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderId: user.id,
-          content: message
-        })
-      });
+      const response = await messageAPI.sendMessage(conversationId, user.id, message);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(errorData.error);
+      if (!response.success) {
+        alert(response.error || 'Failed to send message');
         setIsLoading(false);
         return;
       }

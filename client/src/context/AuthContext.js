@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI, userAPI } from '../services/api';
 
 // Create the authentication context
 const AuthContext = createContext();
@@ -23,13 +24,7 @@ export function AuthProvider({ children }) {
   // Login function
   const login = async (email, password) => {
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      
-      const data = await response.json();
+      const data = await authAPI.login(email, password);
       
       if (data.success) {
         const userData = {
@@ -57,13 +52,7 @@ export function AuthProvider({ children }) {
   // Register function
   const register = async (userData) => {
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-      
-      const data = await response.json();
+      const data = await authAPI.register(userData);
       
       if (data.success) {
         return { success: true };
@@ -79,7 +68,7 @@ export function AuthProvider({ children }) {
   // Logout function
   const logout = async () => {
     try {
-      await fetch('/api/logout', { method: 'POST' });
+      await authAPI.logout();
       localStorage.removeItem('user');
       setUser(null);
       return { success: true };
@@ -92,16 +81,7 @@ export function AuthProvider({ children }) {
   // Update user profile
   const updateProfile = async (profileData) => {
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          ...profileData
-        })
-      });
-      
-      const data = await response.json();
+      const data = await userAPI.updateProfile(user.id, profileData);
       
       if (data.success) {
         const updatedUser = {
