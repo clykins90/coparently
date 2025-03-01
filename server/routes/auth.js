@@ -46,6 +46,7 @@ router.post('/login', async (req, res) => {
         requiresProfile: !isProfileComplete,
         authProvider: user.auth_provider,
         profilePicture: user.google_profile_picture,
+        role: user.role,
         token: token // Add JWT token to response
       });
     } else {

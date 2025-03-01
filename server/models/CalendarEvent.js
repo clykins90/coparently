@@ -28,9 +28,12 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     event_type: {
-      type: DataTypes.ENUM('custody_transfer', 'appointment', 'activity', 'school', 'other'),
+      type: DataTypes.STRING,
       defaultValue: 'other',
-      allowNull: false
+      allowNull: false,
+      validate: {
+        isIn: [['custody_transfer', 'appointment', 'activity', 'school', 'other']]
+      }
     },
     is_recurring: {
       type: DataTypes.BOOLEAN,
@@ -64,10 +67,13 @@ module.exports = (sequelize) => {
       }
     },
     status: {
-      type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+      type: DataTypes.STRING,
       defaultValue: 'approved',
       allowNull: false,
-      comment: 'Status of event if it requires approval from the other parent'
+      comment: 'Status of event if it requires approval from the other parent',
+      validate: {
+        isIn: [['pending', 'approved', 'rejected']]
+      }
     },
     color: {
       type: DataTypes.STRING,

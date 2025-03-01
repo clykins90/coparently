@@ -4,6 +4,7 @@ import Communication from './Communication';
 import Finances from './Finances';
 import Calendar from './Calendar';
 import Settings from './Settings';
+import ChildUserManagement from './ChildUserManagement';
 import PartnerRequestNotification from './PartnerRequestNotification';
 import Header from './Header';
 import { 
@@ -13,7 +14,8 @@ import {
   FaCog,
   FaHome,
   FaChevronLeft,
-  FaChevronRight
+  FaChevronRight,
+  FaChild
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
@@ -107,6 +109,15 @@ function MainApp() {
           </li>
           <li>
             <Link 
+              to="children" 
+              className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
+            >
+              <FaChild className="text-lg" />
+              {!collapsed && <span>Child Users</span>}
+            </Link>
+          </li>
+          <li>
+            <Link 
               to="settings" 
               className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
             >
@@ -128,6 +139,7 @@ function MainApp() {
             <Route path="communication" element={<Communication />} />
             <Route path="finances" element={<Finances />} />
             <Route path="calendar" element={<Calendar />} />
+            <Route path="children" element={<ChildUserManagement />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="communication" />} />
           </Routes>

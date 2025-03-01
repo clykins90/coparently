@@ -35,7 +35,8 @@ export function AuthProvider({ children }) {
           hasPartner: googleUserData.hasPartner,
           requiresProfile: googleUserData.requiresProfile,
           authProvider: googleUserData.authProvider,
-          profilePicture: googleUserData.profilePicture
+          profilePicture: googleUserData.profilePicture,
+          role: googleUserData.role || 'parent'
         };
         
         // Store token if provided
@@ -61,7 +62,8 @@ export function AuthProvider({ children }) {
           hasPartner: data.hasPartner,
           requiresProfile: data.requiresProfile,
           authProvider: data.authProvider || 'local',
-          profilePicture: data.profilePicture
+          profilePicture: data.profilePicture,
+          role: data.role || 'parent'
         };
         
         // Token is stored in localStorage by the authAPI.login function
@@ -178,6 +180,11 @@ export function AuthProvider({ children }) {
     return user && user.authProvider === 'google';
   };
 
+  // Check if user is a child
+  const isChild = () => {
+    return user && user.role === 'child';
+  };
+
   // Value object that will be passed to any consumer components
   const value = {
     user,
@@ -188,7 +195,8 @@ export function AuthProvider({ children }) {
     updateProfile,
     updateProfilePicture,
     removeProfilePicture,
-    isGoogleAuthenticated
+    isGoogleAuthenticated,
+    isChild
   };
 
   return (

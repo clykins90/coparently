@@ -29,12 +29,13 @@
 - [x] Add ability to remove or reset profile picture
 
 ## Children as Users
-- [] Add ability for children to login to the app
-- [] Children can send messages to partners that they are linked to
-- [] Partners can have access to all messages that children send in the app
-- [] Add tabs to the communication tab to cycle between messages with partners and children
-- [] Children can only see communications tab
-- [] The same AI filtering rules apply for messages to and from children
+- [x] Add ability for children to login to the app
+- [x] Children can send messages to partners that they are linked to
+- [x] Partners can have access to all messages that children send in the app
+- [x] Add tabs to the communication tab to cycle between messages with partners and children
+- [x] Children can only see communications tab
+- [x] The same AI filtering rules apply for messages to and from children
+
 ## How to use this todo list
 
 - Mark items as complete by changing `[ ]` to `[x]` or using strikethrough

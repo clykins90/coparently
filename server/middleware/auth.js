@@ -39,6 +39,34 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
+// Middleware to restrict access to parent users only
+const parentOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  
+  if (req.user.role !== 'parent') {
+    return res.status(403).json({ success: false, message: 'Access denied. Parents only.' });
+  }
+  
+  next();
+};
+
+// Middleware to restrict access to child users only
+const childOnly = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  
+  if (req.user.role !== 'child') {
+    return res.status(403).json({ success: false, message: 'Access denied. Children only.' });
+  }
+  
+  next();
+};
+
 module.exports = {
-  authenticateUser
+  authenticateUser,
+  parentOnly,
+  childOnly
 }; 

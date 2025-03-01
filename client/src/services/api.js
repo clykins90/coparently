@@ -236,6 +236,32 @@ export const messageAPI = {
     apiRequest('/api/test-filter', {
       method: 'POST',
       body: JSON.stringify({ message, context })
+    }),
+    
+  getConversations: () => 
+    apiRequest('/api/conversations')
+};
+
+// Child User API
+export const childUserAPI = {
+  getChildUsers: () => 
+    apiRequest('/api/children-users'),
+    
+  createChildUser: (childData) => 
+    apiRequest('/api/children-users', {
+      method: 'POST',
+      body: JSON.stringify(childData)
+    }),
+    
+  updateChildUser: (childId, childData) => 
+    apiRequest(`/api/children-users/${childId}`, {
+      method: 'PUT',
+      body: JSON.stringify(childData)
+    }),
+    
+  deleteChildUser: (childId) => 
+    apiRequest(`/api/children-users/${childId}`, {
+      method: 'DELETE'
     })
 };
 
@@ -243,5 +269,6 @@ export default {
   auth: authAPI,
   user: userAPI,
   partner: partnerAPI,
-  message: messageAPI
+  message: messageAPI,
+  childUser: childUserAPI
 }; 

@@ -47,6 +47,15 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('local', 'google'),
       defaultValue: 'local',
       allowNull: false
+    },
+    role: {
+      type: DataTypes.STRING,
+      defaultValue: 'parent',
+      allowNull: false,
+      comment: 'Determines if the user is a parent or a child',
+      validate: {
+        isIn: [['parent', 'child']]
+      }
     }
   }, {
     tableName: 'users',
@@ -101,6 +110,17 @@ module.exports = (sequelize) => {
     User.hasMany(models.PartnerRequest, {
       foreignKey: 'recipient_id',
       as: 'receivedPartnerRequests'
+    });
+    
+    // Add associations for child-parent links
+    User.hasMany(models.ChildParentLink, {
+      foreignKey: 'child_user_id',
+      as: 'parentLinks'
+    });
+    
+    User.hasMany(models.ChildParentLink, {
+      foreignKey: 'parent_user_id',
+      as: 'childLinks'
     });
   };
 

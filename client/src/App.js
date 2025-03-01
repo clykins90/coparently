@@ -6,6 +6,7 @@ import AddPartner from './components/AddPartner';
 import LinkExistingPartner from './components/LinkExistingPartner';
 import InvitePartner from './components/InvitePartner';
 import MainApp from './components/MainApp';
+import ChildDashboard from './components/ChildDashboard';
 import Register from './components/Register';
 import ProfileUpdate from './components/ProfileUpdate';
 import TestAI from './TestAI';
@@ -31,6 +32,7 @@ function AppContent() {
   const location = useLocation();
   const { user, loading } = useAuth();
   const requiresProfile = user?.requiresProfile || false;
+  const isChild = user?.role === 'child';
 
   if (loading) {
     return <div className="loading-screen">Loading...</div>;
@@ -56,15 +58,35 @@ function AppContent() {
         <Route path="/test-ai" element={<TestAI />} />
         <Route path="/auth-success" element={<AuthSuccess />} />
         <Route 
+          path="/child-dashboard" 
+          element={
+            user ? (
+              isChild ? (
+                <div className="child-dashboard">
+                  <ChildDashboard />
+                </div>
+              ) : (
+                <Navigate to="/app" />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          } 
+        />
+        <Route 
           path="/app/*" 
           element={
             user ? (
               requiresProfile ? (
                 <Navigate to="/profile" replace state={{ requiresProfile: true }} />
               ) : (
-                <div className="main-app">
-                  <MainApp />
-                </div>
+                isChild ? (
+                  <Navigate to="/child-dashboard" />
+                ) : (
+                  <div className="main-app">
+                    <MainApp />
+                  </div>
+                )
               )
             ) : (
               <Navigate to="/login" />
