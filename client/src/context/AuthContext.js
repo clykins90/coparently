@@ -129,6 +129,50 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Update profile picture
+  const updateProfilePicture = async (imageFile) => {
+    try {
+      const data = await userAPI.updateProfilePicture(user.id, imageFile);
+      
+      if (data.success) {
+        const updatedUser = {
+          ...user,
+          profilePicture: data.profilePicture
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        return { success: true, profilePicture: data.profilePicture };
+      } else {
+        return { success: false, message: data.message || 'Profile picture update failed' };
+      }
+    } catch (error) {
+      console.error('Profile picture update error:', error);
+      return { success: false, message: 'An error occurred during profile picture update' };
+    }
+  };
+
+  // Remove profile picture
+  const removeProfilePicture = async () => {
+    try {
+      const data = await userAPI.removeProfilePicture(user.id);
+      
+      if (data.success) {
+        const updatedUser = {
+          ...user,
+          profilePicture: null
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        return { success: true };
+      } else {
+        return { success: false, message: data.message || 'Failed to remove profile picture' };
+      }
+    } catch (error) {
+      console.error('Remove profile picture error:', error);
+      return { success: false, message: 'An error occurred while removing profile picture' };
+    }
+  };
+
   // Check if user is authenticated with Google
   const isGoogleAuthenticated = () => {
     return user && user.authProvider === 'google';
@@ -142,6 +186,8 @@ export function AuthProvider({ children }) {
     register,
     logout,
     updateProfile,
+    updateProfilePicture,
+    removeProfilePicture,
     isGoogleAuthenticated
   };
 

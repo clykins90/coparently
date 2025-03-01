@@ -63,6 +63,45 @@ async function apiRequest(endpoint, options = {}) {
   }
 }
 
+/**
+ * Make a multipart form data request to the API (for file uploads)
+ * @param {string} endpoint - The API endpoint to request
+ * @param {FormData} formData - The form data to send
+ * @returns {Promise<Object>} - The response data
+ */
+async function apiFileRequest(endpoint, formData) {
+  const url = `${API_URL}${endpoint}`;
+  
+  // Set headers for file upload (no Content-Type, let browser set it with boundary)
+  const headers = {};
+  
+  // Add authorization header if token exists
+  const token = getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+      credentials: 'include' // Include credentials for session cookies
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'API file upload failed');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API file upload error:', error);
+    throw error;
+  }
+}
+
 // Auth API
 export const authAPI = {
   login: async (email, password) => {
@@ -116,6 +155,20 @@ export const userAPI = {
         userId,
         ...profileData
       })
+    }),
+    
+  updateProfilePicture: (userId, imageFile) => {
+    const formData = new FormData();
+    formData.append('userId', userId);
+    formData.append('profilePicture', imageFile);
+    
+    return apiFileRequest('/api/profile/picture', formData);
+  },
+  
+  removeProfilePicture: (userId) =>
+    apiRequest('/api/profile/picture', {
+      method: 'DELETE',
+      body: JSON.stringify({ userId })
     })
 };
 

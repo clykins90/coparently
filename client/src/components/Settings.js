@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { partnerAPI } from '../services/api';
 import { formatPhoneNumber } from '../utils/validation';
 import ChildrenManager from './settings/ChildrenManager';
-import { FaUser, FaUserFriends, FaPhone, FaEnvelope, FaExclamationTriangle, FaChild, FaFileAlt } from 'react-icons/fa';
+import { FaUser, FaUserFriends, FaPhone, FaEnvelope, FaExclamationTriangle, FaChild, FaFileAlt, FaCamera, FaTrash, FaUpload } from 'react-icons/fa';
+import Avatar from './common/Avatar';
+import Button from './common/Button';
 
 function Settings() {
   const [partnerData, setPartnerData] = useState(null);
@@ -18,8 +20,11 @@ function Settings() {
   const [message, setMessage] = useState('');
   const [cancellingRequestId, setCancellingRequestId] = useState(null);
   const [activeTab, setActiveTab] = useState('profile'); // Default to profile tab
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, updateProfilePicture, removeProfilePicture } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -120,6 +125,57 @@ function Settings() {
     });
   };
 
+  const handleProfilePictureUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setUploadError('Please select a valid image file (JPEG, PNG, or GIF)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Image size should be less than 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError('');
+
+    try {
+      const result = await updateProfilePicture(file);
+      if (result.success) {
+        setMessage('Profile picture updated successfully');
+      } else {
+        setUploadError(result.message || 'Failed to update profile picture');
+      }
+    } catch (err) {
+      console.error('Error uploading profile picture:', err);
+      setUploadError('An error occurred while uploading profile picture');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveProfilePicture = async () => {
+    if (window.confirm('Are you sure you want to remove your profile picture?')) {
+      try {
+        const result = await removeProfilePicture();
+        if (result.success) {
+          setMessage('Profile picture removed successfully');
+        } else {
+          setUploadError(result.message || 'Failed to remove profile picture');
+        }
+      } catch (err) {
+        console.error('Error removing profile picture:', err);
+        setUploadError('An error occurred while removing profile picture');
+      }
+    }
+  };
+
   // Tab rendering functions
   const renderProfileAndPartnerTab = () => (
     <>
@@ -127,6 +183,60 @@ function Settings() {
         <div className="flex items-center mb-4">
           <FaUser className="text-primary mr-2" />
           <h3 className="text-xl font-semibold text-gray-700">Your Profile</h3>
+        </div>
+
+        {/* Profile Picture Section */}
+        <div className="mb-6 flex flex-col items-center sm:flex-row sm:items-start">
+          <div className="relative mb-4 sm:mb-0 sm:mr-6">
+            <Avatar 
+              src={user.profilePicture}
+              firstName={user.firstName}
+              lastName={user.lastName}
+              size="2xl"
+            />
+            <div className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full cursor-pointer hover:bg-primary-dark transition-colors">
+              <FaCamera onClick={() => fileInputRef.current.click()} />
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*"
+                onChange={handleProfilePictureUpload}
+              />
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center sm:items-start">
+            <h4 className="text-lg font-medium text-gray-800 mb-2">Profile Picture</h4>
+            <div className="flex space-x-2">
+              <Button 
+                onClick={() => fileInputRef.current.click()}
+                disabled={isUploading}
+                variant="subtle"
+                size="sm"
+                icon={<FaUpload />}
+              >
+                {isUploading ? 'Uploading...' : 'Upload New'}
+              </Button>
+              
+              {user.profilePicture && (
+                <Button 
+                  onClick={handleRemoveProfilePicture}
+                  variant="dangerSubtle"
+                  size="sm"
+                  icon={<FaTrash />}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+            {uploadError && (
+              <p className="text-red-500 text-sm mt-2">{uploadError}</p>
+            )}
+            <p className="text-gray-500 text-sm mt-2">
+              Recommended: Square image, at least 200x200 pixels
+            </p>
+          </div>
         </div>
         
         <form onSubmit={handleProfileUpdate} className="space-y-4">
@@ -182,12 +292,12 @@ function Settings() {
           </div>
           
           <div>
-            <button 
+            <Button 
               type="submit" 
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+              variant="subtle"
             >
               Update Profile
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -209,12 +319,13 @@ function Settings() {
               </p>
             </div>
             
-            <button 
+            <Button 
               onClick={handleUnlink} 
-              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors flex items-center"
+              variant="dangerSubtle"
+              icon={<FaExclamationTriangle />}
             >
-              <FaExclamationTriangle className="mr-2" /> Unlink Partner
-            </button>
+              Unlink Partner
+            </Button>
           </div>
         ) : outgoingRequests.length > 0 ? (
           <div className="space-y-4">
@@ -242,13 +353,14 @@ function Settings() {
                     </div>
                   )}
                   <div className="flex justify-end">
-                    <button 
+                    <Button 
                       onClick={() => handleCancelRequest(request.id)} 
                       disabled={cancellingRequestId === request.id}
-                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      variant="ghost"
+                      size="sm"
                     >
                       {cancellingRequestId === request.id ? 'Cancelling...' : 'Cancel Request'}
-                    </button>
+                    </Button>
                   </div>
                 </li>
               ))}
@@ -257,11 +369,10 @@ function Settings() {
         ) : (
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-md text-center">
             <p className="mb-3">No partner linked.</p>
-            <Link 
-              to="/add-partner" 
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors inline-block"
-            >
-              Add a partner
+            <Link to="/add-partner">
+              <Button variant="subtle">
+                Add a partner
+              </Button>
             </Link>
           </div>
         )}

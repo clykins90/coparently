@@ -19,6 +19,12 @@ async function filterMessage(message, conversationContext = null) {
     return { status: 'blocked', message: 'Empty messages cannot be sent.' };
   }
   
+  // Skip processing for very short, benign messages
+  if (message.length <= 10 && !containsPotentiallyHarmfulContent(message)) {
+    console.log("Skipping filter for short, benign message");
+    return message;
+  }
+  
   try {
     // First use OpenAI's moderation API for efficient initial screening
     const moderation = await openai.moderations.create({ input: message });
@@ -27,6 +33,12 @@ async function filterMessage(message, conversationContext = null) {
     // Log moderation results for monitoring
     console.log("Moderation categories:", moderationResult.categories);
     console.log("Moderation scores:", moderationResult.category_scores);
+    
+    // If no flags are raised by moderation, return the original message
+    if (!moderationResult.flagged) {
+      console.log("Message passed moderation check, returning original");
+      return message;
+    }
     
     // If message is flagged for severe content, block immediately without rewriting
     if (moderationResult.flagged && 
@@ -47,11 +59,7 @@ async function filterMessage(message, conversationContext = null) {
     // Build system prompt with context if available
     let systemPrompt = `You are a communication mediator for a co-parenting application used by divorced or separated parents.
 
-Your role is to ensure communications remain:
-1. Child-focused and in the best interest of the children
-2. Respectful and non-confrontational
-3. Free from emotional manipulation, passive-aggressive language, or blame
-4. Constructive and solution-oriented
+    IMPORTANT: If a message contains no negative/harmful content, return it EXACTLY as written without any changes.
 
 When evaluating messages:
 - Allow factual discussions about schedules, expenses, and child-related information
@@ -71,6 +79,13 @@ Examples of problematic messages and their rewrites:
 
 4. Original: "You never follow through with anything we agree on. I'm tired of your lies."
    Rewritten: "I feel we may have different understandings of our agreements. Could we clarify expectations to ensure we're on the same page?"
+
+Examples of messages that should NOT be changed:
+1. "Hi"
+2. "Good morning"
+3. "I'll pick up the kids at 3pm"
+4. "Can we discuss the school schedule?"
+5. "The doctor's appointment is on Tuesday at 2pm"
 
 If a message requires minor changes, rewrite it to be more neutral and constructive.
 If a message is too problematic to rewrite while preserving meaning, respond exactly with:
@@ -127,6 +142,25 @@ Simply return either the rewritten message or the blocked message notice.`;
     console.warn('Allowing message to pass due to filter error');
     return message;
   }
+}
+
+/**
+ * Check if a message contains potentially harmful content
+ * @param {string} message - The message to check
+ * @returns {boolean} - True if potentially harmful content is detected
+ */
+function containsPotentiallyHarmfulContent(message) {
+  // List of words/phrases that might indicate harmful content
+  const harmfulPatterns = [
+    /\b(hate|stupid|idiot|dumb|fool)\b/i,
+    /\b(never|always|every time)\b/i,
+    /\b(your fault|blame|irresponsible)\b/i,
+    /\b(angry|furious|mad|upset)\b/i,
+    /\b(won't|refuse|denied|rejected)\b/i,
+    /[!]{2,}/  // Multiple exclamation marks
+  ];
+  
+  return harmfulPatterns.some(pattern => pattern.test(message));
 }
 
 /**

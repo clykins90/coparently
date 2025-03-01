@@ -1,38 +1,80 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaUser, FaHome } from 'react-icons/fa';
+import { FaSignOutAlt, FaCog, FaChevronDown } from 'react-icons/fa';
+import Avatar from './common/Avatar';
 
-function Header() {
+function Header({ handleLogout, collapsed }) {
   const { user } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
+
+  // Debug user object
+  useEffect(() => {
+    if (user) {
+      console.log('User object in Header:', user);
+    }
+  }, [user]);
   
   return (
-    <header className="bg-white shadow-md py-3 fixed top-0 left-0 right-0 z-20">
-      <div className="flex justify-between items-center px-4">
-        <div className="w-64 flex justify-center">
-          <Link to="/app" className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-dark to-primary hover:from-primary hover:to-primary-light transition-colors duration-300 flex items-center">
-            <FaHome className="mr-2 text-primary" />
-            Coparently
-          </Link>
-        </div>
-        
+    <header className="bg-white shadow-sm py-2 fixed top-0 right-0 z-20 w-full">
+      <div className="flex justify-end items-center px-4">
         <div className="flex items-center">
           {user && (
-            <div className="flex items-center space-x-3 bg-secondary rounded-full py-2 px-4 hover:bg-secondary-dark transition-colors">
-              {user.profilePicture ? (
-                <img 
-                  src={user.profilePicture} 
-                  alt={`${user.firstName} ${user.lastName}`} 
-                  className="w-8 h-8 rounded-full object-cover"
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center space-x-2 bg-secondary rounded-full py-1 px-3 hover:bg-secondary-dark transition-colors"
+              >
+                <Avatar 
+                  src={user.profilePicture}
+                  firstName={user.firstName}
+                  lastName={user.lastName}
+                  size="xs"
                 />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white">
-                  <FaUser className="text-sm" />
+                <span className="font-medium text-gray-800 text-sm">
+                  {user.firstName} {user.lastName}
+                </span>
+                <FaChevronDown className={`text-gray-600 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-30">
+                  <Link 
+                    to="/app/settings" 
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    <FaCog className="mr-2" />
+                    Settings
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      handleLogout();
+                    }} 
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                  >
+                    <FaSignOutAlt className="mr-2" />
+                    Sign Out
+                  </button>
                 </div>
               )}
-              <span className="font-medium text-gray-800">
-                {user.firstName} {user.lastName}
-              </span>
             </div>
           )}
         </div>
