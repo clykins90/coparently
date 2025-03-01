@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { partnerAPI } from '../services/api';
-import MessageFilterTester from './MessageFilterTester';
 import { formatPhoneNumber } from '../utils/validation';
 import ChildrenManager from './settings/ChildrenManager';
-import { FaUser, FaUserFriends, FaPhone, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
+import { FaUser, FaUserFriends, FaPhone, FaEnvelope, FaExclamationTriangle, FaChild, FaFileAlt } from 'react-icons/fa';
 
 function Settings() {
   const [partnerData, setPartnerData] = useState(null);
@@ -18,6 +17,7 @@ function Settings() {
   });
   const [message, setMessage] = useState('');
   const [cancellingRequestId, setCancellingRequestId] = useState(null);
+  const [activeTab, setActiveTab] = useState('profile'); // Default to profile tab
   const navigate = useNavigate();
   const { user, updateProfile } = useAuth();
 
@@ -120,16 +120,9 @@ function Settings() {
     });
   };
 
-  return (
-    <div className="max-w-4xl mx-auto py-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Account Settings</h2>
-      
-      {message && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-md">
-          {message}
-        </div>
-      )}
-      
+  // Tab rendering functions
+  const renderProfileAndPartnerTab = () => (
+    <>
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex items-center mb-4">
           <FaUser className="text-primary mr-2" />
@@ -273,10 +266,91 @@ function Settings() {
           </div>
         )}
       </div>
+    </>
+  );
 
-      <ChildrenManager />
+  const renderChildrenTab = () => (
+    <ChildrenManager />
+  );
 
-      <MessageFilterTester />
+  const renderDocumentsTab = () => (
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="flex items-center mb-4">
+        <FaFileAlt className="text-primary mr-2" />
+        <h3 className="text-xl font-semibold text-gray-700">Documents</h3>
+      </div>
+      
+      <p className="text-gray-600 mb-6">
+        This section will allow you to manage important documents related to your co-parenting arrangement.
+      </p>
+      
+      <div className="p-8 bg-gray-50 border border-gray-200 rounded-md text-center">
+        <p className="text-gray-500">Document management features coming soon.</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto py-6">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Account Settings</h2>
+      
+      {message && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-md">
+          {message}
+        </div>
+      )}
+      
+      {/* Tabs Navigation */}
+      <div className="mb-6 border-b border-gray-200">
+        <ul className="flex flex-wrap -mb-px">
+          <li className="mr-2">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`inline-flex items-center px-4 py-2 border-b-2 rounded-t-lg ${
+                activeTab === 'profile'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <FaUser className={`mr-2 ${activeTab === 'profile' ? 'text-primary' : 'text-gray-400'}`} />
+              Your Profile & Linked Partner
+            </button>
+          </li>
+          <li className="mr-2">
+            <button
+              onClick={() => setActiveTab('children')}
+              className={`inline-flex items-center px-4 py-2 border-b-2 rounded-t-lg ${
+                activeTab === 'children'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <FaChild className={`mr-2 ${activeTab === 'children' ? 'text-primary' : 'text-gray-400'}`} />
+              Children
+            </button>
+          </li>
+          <li className="mr-2">
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`inline-flex items-center px-4 py-2 border-b-2 rounded-t-lg ${
+                activeTab === 'documents'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <FaFileAlt className={`mr-2 ${activeTab === 'documents' ? 'text-primary' : 'text-gray-400'}`} />
+              Documents
+            </button>
+          </li>
+        </ul>
+      </div>
+      
+      {/* Tab Content */}
+      <div className="tab-content">
+        {activeTab === 'profile' && renderProfileAndPartnerTab()}
+        {activeTab === 'children' && renderChildrenTab()}
+        {activeTab === 'documents' && renderDocumentsTab()}
+      </div>
     </div>
   );
 }
