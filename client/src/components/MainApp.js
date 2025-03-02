@@ -14,8 +14,7 @@ import {
   FaCog,
   FaHome,
   FaChevronLeft,
-  FaChevronRight,
-  FaChild
+  FaChevronRight
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
@@ -109,15 +108,6 @@ function MainApp() {
           </li>
           <li>
             <Link 
-              to="children" 
-              className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
-            >
-              <FaChild className="text-lg" />
-              {!collapsed && <span>Child Users</span>}
-            </Link>
-          </li>
-          <li>
-            <Link 
               to="settings" 
               className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
             >
@@ -139,7 +129,6 @@ function MainApp() {
             <Route path="communication" element={<Communication />} />
             <Route path="finances" element={<Finances />} />
             <Route path="calendar" element={<Calendar />} />
-            <Route path="children" element={<ChildrenManager />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="communication" />} />
           </Routes>

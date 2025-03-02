@@ -1,3 +1,5 @@
+// client/src/components/Settings.js
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -466,4 +468,4 @@ function Settings() {
   );
 }
 
-export default Settings; 
+export default Settings;

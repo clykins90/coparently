@@ -1,3 +1,5 @@
+// client/src/context/AuthContext.js
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authAPI, userAPI } from '../services/api';
 
@@ -132,7 +134,7 @@ export function AuthProvider({ children }) {
       sessionStorage.clear();
       setUser(null);
       
-      // Attempt to clear cookies (some modern browsers may restrict this)
+      // Attempt to clear cookies
       document.cookie
         .split(';')
         .forEach(c => {

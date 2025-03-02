@@ -21,6 +21,7 @@ const userRoutes = require('./routes/users');
 const partnerRoutes = require('./routes/partners');
 const messageRoutes = require('./routes/messages');
 const calendarRoutes = require('./routes/calendarRoutes');
+const childrenRoutes = require('./routes/children'); // Import children routes
 
 // --- Here's the rename for child-user routes file ---
 // Instead of "children-users.js", we call it "usersChildren.js"
@@ -74,6 +75,7 @@ app.use('/api', userRoutes);
 app.use('/api', partnerRoutes);
 app.use('/api', messageRoutes);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/children', childrenRoutes); // Mount children routes
 
 // ---------------------------
 // Mount your child-user routes

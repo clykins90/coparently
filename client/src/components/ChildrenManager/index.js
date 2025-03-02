@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaUserPlus } from 'react-icons/fa';
+import { FaPlus } from 'react-icons/fa';
 import Button from '../common/Button';
 
 // Custom hooks
@@ -9,24 +9,23 @@ import useCombinedChildren from './hooks/useCombinedChildren';
 
 // Components
 import ChildProfileForm from './components/ChildProfileForm';
-import ChildUserInviteForm from './components/ChildUserInviteForm';
-import ChildUserCreateForm from './components/ChildUserCreateForm';
 import ChildrenTable from './components/ChildrenTable';
 
 /**
  * ChildrenManager component
- * Main component for managing children profiles and user accounts
+ * Main component for managing children profiles and (optionally) child user accounts
  */
 const ChildrenManager = () => {
-  // State for UI control
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [showInviteForm, setShowInviteForm] = useState(false);
-  const [showDirectCreateForm, setShowDirectCreateForm] = useState(false);
+  // State to control the open/closed status of our ChildProfileForm
+  const [isChildModalOpen, setIsChildModalOpen] = useState(false);
+  // If editing an existing child, store that child object here (otherwise null)
+  const [editingChild, setEditingChild] = useState(null);
 
-  // Initialize hooks
+  // Hooks for managing child data
   const childProfiles = useChildProfiles();
   const childUsers = useChildUsers();
+
+  // Combine data for display
   const { combinedChildren } = useCombinedChildren(
     childProfiles.children,
     childUsers.childUsers
@@ -36,95 +35,86 @@ const ChildrenManager = () => {
   useEffect(() => {
     childProfiles.fetchChildren();
     childUsers.fetchChildUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Child profile handlers
+  // Open modal for creating a *new* child (with or without user account)
   const handleOpenAddChildModal = () => {
-    childProfiles.resetFormForNewChild();
-    setIsAddModalOpen(true);
+    setEditingChild(null);
+    setIsChildModalOpen(true);
   };
 
+  // Open modal for editing an *existing* child
   const handleOpenEditChildModal = (child) => {
-    if (child) {
-      childProfiles.setFormForExistingChild(child);
-      setIsEditModalOpen(true);
-    } else {
-      handleOpenAddChildModal();
-    }
+    setEditingChild(child);
+    setIsChildModalOpen(true);
   };
 
+  // Close the modal
   const handleCloseChildModal = () => {
-    setIsAddModalOpen(false);
-    setIsEditModalOpen(false);
+    setIsChildModalOpen(false);
+    setEditingChild(null);
+    // We also reset forms in the custom hooks
+    childProfiles.resetFormForNewChild();
+    childUsers.resetInviteForm();
+    childUsers.resetDirectCreateForm();
   };
 
-  const handleChildFormSubmit = async (e) => {
-    e.preventDefault();
-    const result = await childProfiles.submitChildForm();
-    if (result.success) {
-      handleCloseChildModal();
+  // Combined submission logic: either create or update the child profile,
+  // and if "enable user account" is checked, create or update child user.
+  const handleSubmitChild = async (childData) => {
+    // childData includes: first/last name, dateOfBirth, color, notes, plus user stuff (email, password, relationship, etc.)
+    // Decide if this is create vs. update
+    const isEditing = !!editingChild; 
+
+    // 1) If editing, we first update the "child profile" if it is not purely a user-only row
+    //    If creating, we create the "child profile"
+    //    childProfiles.submitChildForm has logic for create/update
+    const result = await childProfiles.submitUnifiedChildForm(childData, editingChild);
+
+    if (!result.success) {
+      return; // we assume the custom hook already displayed error notifications
     }
+
+    // 2) If the user toggled "enableUserAccount", we handle child user creation or update
+    if (childData.enableUserAccount) {
+      // If we *just* created the child, we have the new child's data in result.data
+      // That has a newly assigned ID if it's a brand-new child
+      const actualChildId = result.data?.newChildId 
+        ? result.data.newChildId 
+        : (editingChild ? editingChild.id : null);
+
+      if (actualChildId) {
+        // Call user creation or update from childUsers
+        await childUsers.submitUnifiedChildUserForm(childData, actualChildId, editingChild);
+      }
+    } else {
+      // If they do NOT want to enable the user account
+      // and the child had an account previously, we might remove it if desired
+      // For simplicity, let's not auto-remove user accounts here unless you want that logic
+    }
+
+    // Finally, re-fetch data
+    await childProfiles.fetchChildren();
+    await childUsers.fetchChildUsers();
+
+    // Close the modal
+    handleCloseChildModal();
   };
 
+  // Deletion logic
   const handleDeleteChild = async (childId) => {
     await childProfiles.deleteChild(childId);
+    // No separate hook call for user side, because the child profile removal is enough
   };
 
-  // Child user handlers
-  const handleToggleInviteForm = () => {
-    setShowInviteForm(!showInviteForm);
-    if (!showInviteForm) {
-      setShowDirectCreateForm(false);
-      childUsers.resetInviteForm();
-    }
-  };
-
-  const handleToggleDirectCreateForm = () => {
-    setShowDirectCreateForm(!showDirectCreateForm);
-    if (!showDirectCreateForm) {
-      setShowInviteForm(false);
-      childUsers.resetDirectCreateForm();
-    }
-  };
-
-  const handleInviteFormSubmit = async (e) => {
-    e.preventDefault();
-    const result = await childUsers.submitInviteForm();
-    if (result.success) {
-      setShowInviteForm(false);
-    }
-  };
-
-  const handleDirectCreateFormSubmit = async (e) => {
-    e.preventDefault();
-    const result = await childUsers.submitDirectCreateForm();
-    if (result.success) {
-      setShowDirectCreateForm(false);
-    }
-  };
-
+  // Deletion logic for child user link only
   const handleDeleteChildUser = async (userId) => {
     await childUsers.deleteChildUser(userId);
   };
 
-  const handlePrefillCreateAccount = (firstName, lastName) => {
-    childUsers.prefillDirectCreateForm(firstName, lastName);
-    setShowDirectCreateForm(true);
-    setShowInviteForm(false);
-  };
-
-  const handlePrefillInviteUser = (firstName, lastName) => {
-    childUsers.resetInviteForm();
-    childUsers.inviteFormData.firstName = firstName;
-    childUsers.inviteFormData.lastName = lastName;
-    setShowInviteForm(true);
-    setShowDirectCreateForm(false);
-  };
-
-  // Determine if any loading is happening
+  // Display any loading or notification from the hooks
   const isLoading = childProfiles.isLoading || childUsers.isLoading;
-
-  // Display notification from either hook
   const notification = childProfiles.notification || childUsers.notification;
 
   return (
@@ -135,89 +125,48 @@ const ChildrenManager = () => {
           <p>{notification.message}</p>
         </div>
       )}
-      
       {notification && notification.type === 'success' && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           <p className="font-bold">{notification.title}</p>
           <p>{notification.message}</p>
         </div>
       )}
-      
+
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Children Management</h2>
-        <p className="text-gray-600">Manage your children's profiles and child user accounts</p>
+        <p className="text-gray-600">Manage your children's profiles and optional child user accounts</p>
       </div>
-      
-      <div className="mt-6">
-        <div className="flex justify-between items-center mb-4">
-          <h4 className="text-lg font-medium text-gray-700">Children</h4>
-          <div className="flex space-x-2">
-            <Button 
-              onClick={handleOpenAddChildModal}
-              className="flex items-center"
-              icon={<FaPlus />}
-            >
-              Add Child
-            </Button>
-            <Button 
-              onClick={handleToggleDirectCreateForm}
-              className="flex items-center"
-              icon={<FaPlus />}
-            >
-              Create Child User
-            </Button>
-            <Button 
-              onClick={handleToggleInviteForm}
-              className="flex items-center"
-              icon={<FaUserPlus />}
-            >
-              Invite Child User
-            </Button>
-          </div>
-        </div>
-        
-        <ChildUserInviteForm 
-          isVisible={showInviteForm}
-          onClose={handleToggleInviteForm}
-          formData={childUsers.inviteFormData}
-          formErrors={childUsers.inviteFormErrors}
-          isLoading={childUsers.isLoading}
-          onInputChange={childUsers.handleInviteInputChange}
-          onSubmit={handleInviteFormSubmit}
-        />
-        
-        <ChildUserCreateForm 
-          isVisible={showDirectCreateForm}
-          onClose={handleToggleDirectCreateForm}
-          formData={childUsers.directCreateFormData}
-          formErrors={childUsers.directCreateFormErrors}
-          isLoading={childUsers.isLoading}
-          onInputChange={childUsers.handleDirectCreateInputChange}
-          onSubmit={handleDirectCreateFormSubmit}
-        />
-        
-        <ChildrenTable 
-          combinedChildren={combinedChildren}
-          onEditChild={handleOpenEditChildModal}
-          onDeleteChild={handleDeleteChild}
-          onDeleteChildUser={handleDeleteChildUser}
-          onCreateAccount={handlePrefillCreateAccount}
-          onInviteUser={handlePrefillInviteUser}
-        />
+
+      <div className="flex justify-end mb-4">
+        <Button 
+          onClick={handleOpenAddChildModal}
+          className="flex items-center"
+          icon={<FaPlus />}
+        >
+          Add Child
+        </Button>
       </div>
-      
-      <ChildProfileForm 
-        isOpen={isAddModalOpen || isEditModalOpen}
-        onClose={handleCloseChildModal}
-        isEditing={isEditModalOpen}
-        formData={childProfiles.formData}
-        formErrors={childProfiles.formErrors}
-        isLoading={childProfiles.isLoading}
-        onInputChange={childProfiles.handleInputChange}
-        onSubmit={handleChildFormSubmit}
+
+      <ChildrenTable
+        combinedChildren={combinedChildren}
+        onEditChild={handleOpenEditChildModal}
+        onDeleteChild={handleDeleteChild}
+        onDeleteChildUser={handleDeleteChildUser}
       />
+
+      {/* Unified Child Modal */}
+      {isChildModalOpen && (
+        <ChildProfileForm
+          isOpen={isChildModalOpen}
+          onClose={handleCloseChildModal}
+          onSubmit={handleSubmitChild}
+          isLoading={isLoading}
+          // If editing an existing child, pass that along
+          editingChild={editingChild}
+        />
+      )}
     </div>
   );
 };
 
-export default ChildrenManager; 
+export default ChildrenManager;

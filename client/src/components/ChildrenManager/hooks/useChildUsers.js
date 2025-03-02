@@ -4,34 +4,17 @@ import { useAuth } from '../../../context/AuthContext';
 
 /**
  * Custom hook for managing child users
- * - Fetching all child accounts
- * - Inviting child accounts
- * - Direct creation of child accounts
- * - Deleting child links
+ * - We unify "create account" and "invite" steps in one: "submitUnifiedChildUserForm"
  */
 export default function useChildUsers() {
   const [childUsers, setChildUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState(null);
 
-  // Invite form state
-  const [inviteFormData, setInviteFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    relationship: 'child'
-  });
+  // For leftover old forms, though we don't show them, we still keep these to avoid breakage
+  const [inviteFormData, setInviteFormData] = useState({});
   const [inviteFormErrors, setInviteFormErrors] = useState({});
-
-  // Direct create form state
-  const [directCreateFormData, setDirectCreateFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    relationship: 'child'
-  });
+  const [directCreateFormData, setDirectCreateFormData] = useState({});
   const [directCreateFormErrors, setDirectCreateFormErrors] = useState({});
 
   const { user } = useAuth();
@@ -41,258 +24,122 @@ export default function useChildUsers() {
     setTimeout(() => setNotification(null), 5000);
   }
 
-  /**
-   * Fetch all child-user accounts
-   */
+  // Fetch all child-user accounts
   async function fetchChildUsers() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('/api/users/children', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setChildUsers(response.data.children);
-      return response.data.children;
     } catch (error) {
       console.error('Error fetching child users:', error);
       showNotification('Error', 'An error occurred while fetching child users', 'error');
-      return [];
     } finally {
       setIsLoading(false);
     }
   }
 
-  /**
-   * Validate the invite form
-   */
-  function validateInviteForm() {
-    const errors = {};
-    if (!inviteFormData.firstName.trim()) {
-      errors.firstName = 'First name is required';
-    }
-    if (!inviteFormData.lastName.trim()) {
-      errors.lastName = 'Last name is required';
-    }
-    if (!inviteFormData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(inviteFormData.email)) {
-      errors.email = 'Email is invalid';
-    }
-    setInviteFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  }
-
-  /**
-   * Submit invitation form
-   */
-  async function submitInviteForm() {
-    if (!validateInviteForm()) {
-      return { success: false };
-    }
+  // We unify the logic for creating a child user account in a single method:
+  // If the child is brand-new, we already created the child profile. Now we create the child user link
+  async function submitUnifiedChildUserForm(formData, childId, editingChild = null) {
     setIsLoading(true);
     try {
+      // Parent must be logged in
       const token = localStorage.getItem('token');
-      const data = {
-        firstName: inviteFormData.firstName,
-        lastName: inviteFormData.lastName,
-        email: inviteFormData.email,
-        relationship: inviteFormData.relationship,
-        parentId: user ? user.id : null
-      };
-      await axios.post('/api/users/children/invite', data, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      showNotification('Success', 'Invitation sent successfully', 'success');
-      resetInviteForm();
-      const updated = await fetchChildUsers();
-      return { success: true, data: updated };
+      const parentId = user ? user.id : null;
+      if (!parentId) {
+        showNotification('Error', 'No parent user found in context', 'error');
+        return { success: false };
+      }
+
+      // If the child already had a user account (editingChild.hasUserAccount = true),
+      // we typically wouldn't "create" a new user. The child user might exist already.
+      // For simplicity, this code is mostly for brand-new creation.
+
+      // We do a direct create if no user account existed:
+      if (!editingChild || !editingChild.hasUserAccount) {
+        // We create a brand-new child user
+        // For brand-new user creation, we must have password
+        const createPayload = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          relationship: formData.relationship
+        };
+        await axios.post('/api/users/children', createPayload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showNotification('Success', 'Child user account created successfully', 'success');
+      } else {
+        // If we do want to handle "update" child user logic, you might do that here
+        // For now, do nothing if the user account already existed
+        console.log('Child user account already exists, skipping creation...');
+      }
+
+      // Refresh data
+      await fetchChildUsers();
+      return { success: true };
     } catch (error) {
-      console.error('Error inviting child user:', error);
-      showNotification('Error', error.response?.data?.message || 'Error sending invitation', 'error');
+      console.error('Error creating/updating child user account:', error);
+      showNotification('Error', 'Failed to create or update child user account', 'error');
       return { success: false, error };
     } finally {
       setIsLoading(false);
     }
   }
 
-  /**
-   * Reset the invite form
-   */
-  function resetInviteForm() {
-    setInviteFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      relationship: 'child'
-    });
-    setInviteFormErrors({});
-  }
-
-  /**
-   * Handle invite form input change
-   */
-  function handleInviteInputChange(e) {
-    const { name, value } = e.target;
-    setInviteFormData((prev) => ({ ...prev, [name]: value }));
-    if (inviteFormErrors[name]) {
-      setInviteFormErrors((errs) => ({ ...errs, [name]: null }));
-    }
-  }
-
-  /**
-   * Validate direct create form
-   */
-  function validateDirectCreateForm() {
-    const errors = {};
-    if (!directCreateFormData.firstName.trim()) {
-      errors.firstName = 'First name is required';
-    }
-    if (!directCreateFormData.lastName.trim()) {
-      errors.lastName = 'Last name is required';
-    }
-    if (!directCreateFormData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(directCreateFormData.email)) {
-      errors.email = 'Email is invalid';
-    }
-    if (!directCreateFormData.password) {
-      errors.password = 'Password is required';
-    } else if (directCreateFormData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    if (directCreateFormData.password !== directCreateFormData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
-    setDirectCreateFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  }
-
-  /**
-   * Submit direct create form
-   */
-  async function submitDirectCreateForm() {
-    if (!validateDirectCreateForm()) {
-      return { success: false };
-    }
-    setIsLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const data = {
-        firstName: directCreateFormData.firstName,
-        lastName: directCreateFormData.lastName,
-        email: directCreateFormData.email,
-        password: directCreateFormData.password,
-        relationship: directCreateFormData.relationship,
-        parentId: user ? user.id : null
-      };
-      await axios.post('/api/users/children', data, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      showNotification('Success', 'Child user created successfully', 'success');
-      resetDirectCreateForm();
-      const updated = await fetchChildUsers();
-      return { success: true, data: updated };
-    } catch (error) {
-      console.error('Error creating child user:', error);
-      showNotification('Error', error.response?.data?.message || 'Error creating child user', 'error');
-      return { success: false, error };
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  /**
-   * Reset direct create form
-   */
-  function resetDirectCreateForm() {
-    setDirectCreateFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      relationship: 'child'
-    });
-    setDirectCreateFormErrors({});
-  }
-
-  /**
-   * Handle direct create form input changes
-   */
-  function handleDirectCreateInputChange(e) {
-    const { name, value } = e.target;
-    setDirectCreateFormData((prev) => ({ ...prev, [name]: value }));
-    if (directCreateFormErrors[name]) {
-      setDirectCreateFormErrors((errs) => ({ ...errs, [name]: null }));
-    }
-  }
-
-  /**
-   * Delete a child user link
-   */
+  // Delete a child user link
   async function deleteChildUser(userId) {
-    if (!window.confirm('Are you sure you want to remove this child user link?')) {
+    if (!window.confirm('Are you sure you want to remove the child user link?')) {
       return { success: false, canceled: true };
     }
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`/api/users/children/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
       showNotification('Success', 'Child user link removed successfully', 'success');
-      const updated = await fetchChildUsers();
-      return { success: true, data: updated };
+      await fetchChildUsers();
+      return { success: true };
     } catch (error) {
       console.error('Error removing child user:', error);
-      showNotification('Error', 'An error occurred while removing child user', 'error');
+      showNotification('Error', 'An error occurred while removing child user link', 'error');
       return { success: false, error };
     } finally {
       setIsLoading(false);
     }
   }
 
-  /**
-   * Prefill direct create form (optional convenience)
-   */
-  function prefillDirectCreateForm(firstName, lastName) {
-    setDirectCreateFormData((prev) => ({
-      ...prev,
-      firstName,
-      lastName
-    }));
+  // Minimal stubs to keep old code safe:
+  function resetInviteForm() {
+    setInviteFormData({});
+    setInviteFormErrors({});
+  }
+  function resetDirectCreateForm() {
+    setDirectCreateFormData({});
+    setDirectCreateFormErrors({});
   }
 
   return {
     childUsers,
     isLoading,
     notification,
+    fetchChildUsers,
+    deleteChildUser,
 
-    // Hooks for the invite flow
+    // Unified create/update user
+    submitUnifiedChildUserForm,
+
+    // Old stubs
     inviteFormData,
     inviteFormErrors,
-    handleInviteInputChange,
-    submitInviteForm,
-    resetInviteForm,
-
-    // Hooks for direct create flow
     directCreateFormData,
     directCreateFormErrors,
-    handleDirectCreateInputChange,
-    submitDirectCreateForm,
-    resetDirectCreateForm,
-    prefillDirectCreateForm,
-
-    // Main fetch & delete
-    fetchChildUsers,
-    deleteChildUser
+    resetInviteForm,
+    resetDirectCreateForm
   };
 }

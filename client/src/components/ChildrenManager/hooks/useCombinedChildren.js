@@ -7,53 +7,53 @@ import { useState, useEffect } from 'react';
 const useCombinedChildren = (children, childUsers) => {
   const [combinedChildren, setCombinedChildren] = useState([]);
 
-  // Combine children and childUsers data
   useEffect(() => {
     if (children.length === 0 && childUsers.length === 0) {
       setCombinedChildren([]);
       return;
     }
 
-    // Create a map of child users by ID for quick lookup
+    // Build a map so we can figure out if a child has a user account
     const childUserMap = {};
-    childUsers.forEach(user => {
-      childUserMap[user.id] = user;
+    childUsers.forEach(u => {
+      childUserMap[u.id] = u; // keyed by user account's ID
     });
 
-    // Start with all children profiles
+    // Start with all "profile children"
     const combined = children.map(child => {
-      // Find if this child has a user account
-      const matchingUser = childUsers.find(
-        user => 
-          user.firstName.toLowerCase() === child.first_name.toLowerCase() && 
+      // Attempt to match child profile with a child user
+      // We'll match by first/last name if there's no better DB link
+      const match = childUsers.find(
+        user =>
+          user.firstName.toLowerCase() === child.first_name.toLowerCase() &&
           user.lastName.toLowerCase() === child.last_name.toLowerCase()
       );
 
       return {
         ...child,
-        hasUserAccount: !!matchingUser,
-        userAccount: matchingUser,
+        hasUserAccount: !!match,
+        userAccount: match || null,
         isUserOnly: false
       };
     });
 
-    // Add child users that don't have a profile
-    childUsers.forEach(user => {
-      const hasProfile = combined.some(
-        child => 
-          child.first_name.toLowerCase() === user.firstName.toLowerCase() && 
-          child.last_name.toLowerCase() === user.lastName.toLowerCase()
+    // Add child users who *do not* have a matching profile
+    childUsers.forEach(u => {
+      const alreadyInCombined = combined.some(
+        c =>
+          c.first_name.toLowerCase() === u.firstName.toLowerCase() &&
+          c.last_name.toLowerCase() === u.lastName.toLowerCase()
       );
-
-      if (!hasProfile) {
+      if (!alreadyInCombined) {
         combined.push({
-          id: `user-${user.id}`,
-          first_name: user.firstName,
-          last_name: user.lastName,
+          id: `user-${u.id}`,
+          first_name: u.firstName,
+          last_name: u.lastName,
           date_of_birth: null,
           color: null,
+          notes: null,
           hasUserAccount: true,
-          userAccount: user,
+          userAccount: u,
           isUserOnly: true
         });
       }
@@ -62,9 +62,7 @@ const useCombinedChildren = (children, childUsers) => {
     setCombinedChildren(combined);
   }, [children, childUsers]);
 
-  return {
-    combinedChildren
-  };
+  return { combinedChildren };
 };
 
-export default useCombinedChildren; 
+export default useCombinedChildren;

@@ -1,3 +1,5 @@
+// client/src/components/Header.js
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -83,4 +85,4 @@ function Header({ handleLogout, collapsed }) {
   );
 }
 
-export default Header; 
+export default Header;

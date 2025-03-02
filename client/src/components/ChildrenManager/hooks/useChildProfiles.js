@@ -3,200 +3,115 @@ import axios from 'axios';
 
 /**
  * Custom hook for managing child profiles
- * Handles state, API calls, and form validation for child profiles
+ * Now includes a new method "submitUnifiedChildForm" for an all-in-one creation or update
  */
 const useChildProfiles = () => {
   const [children, setChildren] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentChild, setCurrentChild] = useState(null);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    color: '#3B82F6',
-    notes: ''
-  });
   const [formErrors, setFormErrors] = useState({});
   const [notification, setNotification] = useState(null);
 
-  // Show notification
+  // Show a notification
   const showNotification = (title, message, type) => {
     setNotification({ title, message, type });
-    // Auto-hide notification after 5 seconds
     setTimeout(() => {
       setNotification(null);
     }, 5000);
   };
 
-  // Fetch child profiles
+  // Fetch children from backend
   const fetchChildren = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token'); // <-- GET TOKEN
+      const token = localStorage.getItem('token');
       const response = await axios.get('/api/children', {
-        headers: {
-          Authorization: `Bearer ${token}` // <-- INCLUDE TOKEN
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
       setChildren(response.data);
-      return response.data;
     } catch (err) {
       console.error('Error fetching children:', err);
-      
       let errorMessage = 'Failed to fetch children data';
-      
       if (err.response) {
-        console.error('Server error response:', err.response.data);
         errorMessage = err.response.data.message || `Server error: ${err.response.status}`;
-        
-        if (err.response.status === 401) {
-          errorMessage = 'Your session has expired. Please log in again.';
-        }
-      } else if (err.request) {
-        console.error('No response received:', err.request);
-        errorMessage = 'No response from server. Please check your connection.';
-      } else {
-        console.error('Request setup error:', err.message);
-        errorMessage = `Error setting up request: ${err.message}`;
       }
-      
       showNotification('Error', errorMessage, 'error');
-      return [];
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Reset form data for adding a new child
+  // Reset for new child
   const resetFormForNewChild = () => {
     setCurrentChild(null);
-    setFormData({
-      firstName: '',
-      lastName: '',
-      dateOfBirth: '',
-      color: '#3B82F6',
-      notes: ''
-    });
     setFormErrors({});
   };
 
-  // Set form data for editing an existing child
-  const setFormForExistingChild = (child) => {
-    setCurrentChild(child);
-    setFormData({
-      firstName: child.first_name || '',
-      lastName: child.last_name || '',
-      dateOfBirth: child.date_of_birth ? new Date(child.date_of_birth).toISOString().split('T')[0] : '',
-      color: child.color || '#3B82F6',
-      notes: child.notes || ''
-    });
-    setFormErrors({});
-  };
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // Clear error for this field
-    if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: null
-      });
+  // Delete a child
+  const deleteChild = async (childId) => {
+    if (!window.confirm('Are you sure you want to delete this child profile?')) {
+      return { success: false, canceled: true };
     }
-  };
-
-  // Validate form data
-  const validateForm = () => {
-    const errors = {};
-    
-    if (!formData.firstName.trim()) {
-      errors.firstName = 'First name is required';
-    }
-    
-    if (!formData.lastName.trim()) {
-      errors.lastName = 'Last name is required';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Submit form data to create or update a child
-  const submitChildForm = async () => {
-    if (!validateForm()) {
-      return { success: false };
-    }
-    
     setIsLoading(true);
-    
     try {
-      const token = localStorage.getItem('token'); // <-- GET TOKEN
-      const childData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        date_of_birth: formData.dateOfBirth || null,
-        color: formData.color,
-        notes: formData.notes
-      };
-      
-      if (currentChild) {
-        // Update existing child
-        await axios.put(`/api/children/${currentChild.id}`, childData, {
-          headers: {
-            Authorization: `Bearer ${token}` // <-- INCLUDE TOKEN
-          }
-        });
-        showNotification('Success', 'Child updated successfully', 'success');
-      } else {
-        // Add new child
-        await axios.post('/api/children', childData, {
-          headers: {
-            Authorization: `Bearer ${token}` // <-- INCLUDE TOKEN
-          }
-        });
-        showNotification('Success', 'Child added successfully', 'success');
-      }
-      
-      // Refetch children data
-      const updatedChildren = await fetchChildren();
-      return { success: true, data: updatedChildren };
+      const token = localStorage.getItem('token');
+      await axios.delete(`/api/children/${childId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showNotification('Success', 'Child deleted successfully', 'success');
+      await fetchChildren();
+      return { success: true };
     } catch (err) {
-      console.error('Error saving child:', err);
-      showNotification('Error', 'An error occurred while saving child', 'error');
+      console.error('Error deleting child:', err);
+      showNotification('Error', 'An error occurred while deleting child', 'error');
       return { success: false, error: err };
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Delete a child
-  const deleteChild = async (childId) => {
-    if (!window.confirm('Are you sure you want to delete this child?')) {
-      return { success: false, canceled: true };
-    }
-    
+  /**
+   * Combined create/update method: "submitUnifiedChildForm"
+   * If editingChild is null, create a new child. Otherwise, update the existing.
+   */
+  const submitUnifiedChildForm = async (formData, editingChild = null) => {
     setIsLoading(true);
-    
+
     try {
-      const token = localStorage.getItem('token'); // <-- GET TOKEN
-      await axios.delete(`/api/children/${childId}`, {
-        headers: {
-          Authorization: `Bearer ${token}` // <-- INCLUDE TOKEN
-        }
-      });
-      showNotification('Success', 'Child deleted successfully', 'success');
-      
-      // Refetch children data
-      const updatedChildren = await fetchChildren();
-      return { success: true, data: updatedChildren };
+      const token = localStorage.getItem('token');
+      const childPayload = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        date_of_birth: formData.dateOfBirth || null,
+        color: formData.color,
+        notes: formData.notes
+      };
+
+      let resultChildId = null;
+
+      if (editingChild) {
+        // Update existing child profile
+        await axios.put(`/api/children/${editingChild.id}`, childPayload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showNotification('Success', 'Child updated successfully', 'success');
+        resultChildId = editingChild.id;
+      } else {
+        // Create new child profile
+        const createRes = await axios.post('/api/children', childPayload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        showNotification('Success', 'Child added successfully', 'success');
+        resultChildId = createRes.data.id; // new child's id
+      }
+
+      // Refresh list
+      await fetchChildren();
+
+      return { success: true, data: { newChildId: resultChildId } };
     } catch (err) {
-      console.error('Error deleting child:', err);
-      showNotification('Error', 'An error occurred while deleting child', 'error');
+      console.error('Error saving child profile:', err);
+      showNotification('Error', 'An error occurred while saving child profile', 'error');
       return { success: false, error: err };
     } finally {
       setIsLoading(false);
@@ -207,16 +122,12 @@ const useChildProfiles = () => {
     children,
     isLoading,
     currentChild,
-    formData,
     formErrors,
     notification,
     fetchChildren,
     resetFormForNewChild,
-    setFormForExistingChild,
-    handleInputChange,
-    validateForm,
-    submitChildForm,
-    deleteChild
+    deleteChild,
+    submitUnifiedChildForm
   };
 };
 
