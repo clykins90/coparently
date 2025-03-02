@@ -26,7 +26,13 @@ export function SocketProvider({ children }) {
     }
 
     // Create socket connection
-    const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001');
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    console.log('Connecting to socket server at:', apiUrl);
+    const newSocket = io(apiUrl, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
     
     // Set up event listeners
     newSocket.on('connect', () => {

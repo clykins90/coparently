@@ -50,9 +50,8 @@ module.exports = (sequelize) => {
     },
     role: {
       type: DataTypes.STRING,
-      defaultValue: 'parent',
       allowNull: false,
-      comment: 'Determines if the user is a parent or a child',
+      defaultValue: 'parent',
       validate: {
         isIn: [['parent', 'child']]
       }

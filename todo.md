@@ -35,6 +35,15 @@
 - [x] Add tabs to the communication tab to cycle between messages with partners and children
 - [x] Children can only see communications tab
 - [x] The same AI filtering rules apply for messages to and from children
+- [x] Integrate child user management into the Settings page
+- [x] Add email invitation functionality for child users
+- [x] Create child signup page for completing account setup from email invitations
+
+## Code Refactoring
+- [x] Refactor ChildrenManager component into smaller, more focused components
+- [x] Extract data fetching logic into custom hooks for ChildrenManager
+- [x] Improve separation of concerns in ChildrenManager
+- [ ] Apply similar refactoring patterns to other complex components
 
 ## How to use this todo list
 

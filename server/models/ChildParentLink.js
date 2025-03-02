@@ -30,9 +30,16 @@ module.exports = (sequelize) => {
     },
     can_view_messages: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
       allowNull: false,
-      comment: 'Whether the parent can view messages sent by this child'
+      defaultValue: true
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'active',
+      validate: {
+        isIn: [['active', 'pending', 'inactive']]
+      }
     }
   }, {
     tableName: 'child_parent_links',

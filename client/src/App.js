@@ -9,12 +9,13 @@ import MainApp from './components/MainApp';
 import ChildDashboard from './components/ChildDashboard';
 import Register from './components/Register';
 import ProfileUpdate from './components/ProfileUpdate';
-import TestAI from './TestAI';
 import LogoutConfirmation from './components/LogoutConfirmation';
 import AuthSuccess from './components/AuthSuccess';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import './styles.css';
+import ChildSignup from './components/ChildSignup';
+import AuthDebug from './components/AuthDebug';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function AppContent() {
   return (
     <div className="App">
       <Routes>
+        <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/link-partner" element={<LinkPartner />} />
@@ -55,8 +57,9 @@ function AppContent() {
         } />
         <Route path="/profile" element={<ProfileUpdate />} />
         <Route path="/logout" element={<LogoutConfirmation />} />
-        <Route path="/test-ai" element={<TestAI />} />
         <Route path="/auth-success" element={<AuthSuccess />} />
+        <Route path="/child-signup" element={<ChildSignup />} />
+        <Route path="/auth-debug" element={<AuthDebug />} />
         <Route 
           path="/child-dashboard" 
           element={

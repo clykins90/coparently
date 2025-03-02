@@ -15,7 +15,7 @@ router.post('/conversations/:id/messages', async (req, res) => {
     try {
       const recentMessages = await Message.findAll({
         where: { conversation_id: conversationId },
-        order: [['createdAt', 'DESC']],
+        order: [['created_at', 'DESC']],
         limit: 5,
         include: [{ model: User, as: 'sender', attributes: ['id', 'firstName'] }]
       });
@@ -70,7 +70,7 @@ router.get('/conversations/:id/messages', async (req, res) => {
     const conversationId = req.params.id;
     const messages = await Message.findAll({
       where: { conversation_id: conversationId },
-      order: [['createdAt', 'ASC']],
+      order: [['created_at', 'ASC']],
       include: [{ model: User, as: 'sender', attributes: ['username', 'email'] }]
     });
     console.log(`Returning ${messages.length} messages for conversation ${conversationId}`);

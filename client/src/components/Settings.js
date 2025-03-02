@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { partnerAPI } from '../services/api';
 import { formatPhoneNumber } from '../utils/validation';
-import ChildrenManager from './settings/ChildrenManager';
+import ChildrenManager from './ChildrenManager/index';
 import { FaUser, FaUserFriends, FaPhone, FaEnvelope, FaExclamationTriangle, FaChild, FaFileAlt, FaCamera, FaTrash, FaUpload } from 'react-icons/fa';
 import Avatar from './common/Avatar';
 import Button from './common/Button';

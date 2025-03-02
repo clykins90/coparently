@@ -4,7 +4,7 @@ import Communication from './Communication';
 import Finances from './Finances';
 import Calendar from './Calendar';
 import Settings from './Settings';
-import ChildUserManagement from './ChildUserManagement';
+import ChildrenManager from './ChildrenManager/index';
 import PartnerRequestNotification from './PartnerRequestNotification';
 import Header from './Header';
 import { 
@@ -139,7 +139,7 @@ function MainApp() {
             <Route path="communication" element={<Communication />} />
             <Route path="finances" element={<Finances />} />
             <Route path="calendar" element={<Calendar />} />
-            <Route path="children" element={<ChildUserManagement />} />
+            <Route path="children" element={<ChildrenManager />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="communication" />} />
           </Routes>

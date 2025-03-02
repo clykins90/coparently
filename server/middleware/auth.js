@@ -1,3 +1,4 @@
+// server/middleware/auth.js
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
@@ -31,7 +32,10 @@ const authenticateUser = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+    if (
+      error.name === 'JsonWebTokenError' ||
+      error.name === 'TokenExpiredError'
+    ) {
       return res.status(401).json({ message: 'Invalid or expired token' });
     }
     console.error('Authentication error:', error);
@@ -69,4 +73,4 @@ module.exports = {
   authenticateUser,
   parentOnly,
   childOnly
-}; 
+};

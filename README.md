@@ -12,6 +12,7 @@ Coparently is a comprehensive co-parenting application designed to help separate
 - [Development](#development)
 - [API Endpoints](#api-endpoints)
 - [Database Models](#database-models)
+- [Recent Refactorings](#recent-refactorings)
 
 ## Overview
 
@@ -35,6 +36,7 @@ The application uses a client-server architecture with a React frontend and Node
 - Partner linking and invitation system
 - Partner request notifications
 - Profile picture upload and management
+- Child user management and email invitations
 
 ### Communication
 - Real-time messaging using Socket.io
@@ -50,6 +52,7 @@ The application uses a client-server architecture with a React frontend and Node
 - User profile settings
 - Application preferences
 - Child information management
+- Child user management and invitations
 - Profile picture management
 
 ## Tech Stack
@@ -81,6 +84,10 @@ coparently/
 │   ├── public/             # Static files
 │   ├── src/                # Source code
 │   │   ├── components/     # React components
+│   │   │   ├── ChildrenManager/  # Refactored ChildrenManager component
+│   │   │   │   ├── components/   # Child components
+│   │   │   │   ├── hooks/        # Custom hooks for data fetching
+│   │   │   │   └── index.js      # Main component export
 │   │   ├── context/        # React context providers
 │   │   ├── services/       # API service functions
 │   │   ├── utils/          # Utility functions
@@ -201,6 +208,17 @@ npm start
 - `PUT /api/children/:id` - Update child information
 - `DELETE /api/children/:id` - Remove a child
 
+### Child Users
+- `GET /api/children-users` - Get child users linked to parent
+- `POST /api/children-users` - Create a child user
+- `POST /api/children-users/invite` - Invite a child user via email
+- `PUT /api/children-users/:id` - Update child-parent link
+- `DELETE /api/children-users/:id` - Remove child user link
+
+### Child Authentication
+- `GET /api/auth/verify-child-invitation` - Verify child invitation token
+- `POST /api/auth/complete-child-signup` - Complete child signup process
+
 ## Database Models
 
 ### User
@@ -233,4 +251,18 @@ npm start
 
 ### PartnerRequest
 - Request status
-- Requester and recipient information 
+- Requester and recipient information
+
+## Recent Refactorings
+
+### ChildrenManager Component
+The ChildrenManager component has been refactored to follow a more modular structure:
+- Split into smaller, focused components
+- Extracted data fetching logic into custom hooks
+- Improved separation of concerns
+- Enhanced maintainability and readability
+
+The new structure includes:
+- `components/` - UI components for different parts of the children management interface
+- `hooks/` - Custom hooks for data fetching and state management
+- `index.js` - Main component that composes the UI from smaller components 

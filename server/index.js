@@ -1,3 +1,4 @@
+// server/index.js
 console.log("████████████████████████████████████████");
 console.log("█ Server starting... (v2.5)            █");
 console.log("████████████████████████████████████████");
@@ -20,17 +21,21 @@ const userRoutes = require('./routes/users');
 const partnerRoutes = require('./routes/partners');
 const messageRoutes = require('./routes/messages');
 const calendarRoutes = require('./routes/calendarRoutes');
-const childrenRoutes = require('./routes/children');
-const childUsersRoutes = require('./routes/children-users');
+
+// --- Here's the rename for child-user routes file ---
+// Instead of "children-users.js", we call it "usersChildren.js"
+// to align with the new path `/api/users/children`
+const usersChildrenRoutes = require('./routes/usersChildren');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? 'https://your-production-domain.com' 
+    // If in development, allow these origins:
+    origin: process.env.NODE_ENV === 'production'
+      ? 'https://your-production-domain.com'
       : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   }
 });
@@ -39,8 +44,8 @@ const port = process.env.PORT || 3001;
 
 app.use(express.json());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? 'https://your-production-domain.com' 
+  origin: process.env.NODE_ENV === 'production'
+    ? 'https://your-production-domain.com'
     : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -65,27 +70,22 @@ app.use(passport.session());
 // Use route modules
 app.use('/api', authRoutes);
 app.use('/auth', authRoutes); // For Google OAuth routes
-
-// Add a test route to verify the server is running
-app.get('/test', (req, res) => {
-  res.json({ message: 'Server is running' });
-});
-
-// Add a route to check the Google OAuth configuration
-app.get('/check-google-config', (req, res) => {
-  res.json({
-    clientIdExists: !!process.env.GOOGLE_CLIENT_ID,
-    clientSecretExists: !!process.env.GOOGLE_CLIENT_SECRET,
-    sessionSecretExists: !!process.env.SESSION_SECRET
-  });
-});
-
 app.use('/api', userRoutes);
 app.use('/api', partnerRoutes);
 app.use('/api', messageRoutes);
 app.use('/api/calendar', calendarRoutes);
-app.use('/api/children', childrenRoutes);
-app.use('/api/child-users', childUsersRoutes);
+
+// ---------------------------
+// Mount your child-user routes
+// ---------------------------
+// This means that inside "usersChildren.js",
+// if we have router.get('/'), it becomes /api/users/children/
+app.use('/api/users/children', usersChildrenRoutes);
+
+// Test route to confirm server is up
+app.get('/test', (req, res) => {
+  res.json({ message: 'Server is running' });
+});
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

@@ -1,77 +1,149 @@
-# Authentication in Coparently
+# Authentication in Coparently (Technical Overview & Requirements)
 
-## Current Authentication Approach
+This document provides **technical** details of Coparently’s authentication flows—covering both **session-based** (Passport + Express Session) and **JWT-based** (token-based) approaches. By following these requirements and guidelines, the authentication system remains stable, consistent, and secure.
 
-The application currently uses two different authentication methods:
+---
 
-1. **Session-based authentication with Passport.js**
-   - Primarily used for Google OAuth authentication
-   - Uses express-session and passport.js to manage user sessions
-   - Configured in server/config/passport.js
-   - Handles user serialization/deserialization for session storage
+## 1. Primary Auth Methods
 
-2. **Token-based authentication with JWT**
-   - Used for API endpoints that require authentication
-   - JWT tokens are generated during login and Google OAuth callback
-   - Tokens are stored in localStorage on the client side
-   - The authenticateUser middleware validates tokens for protected routes
+### 1.1 Local Email/Password (JWT-based)
 
-## Authentication Flow
+- **Flow**  
+  1. **Login Form**: User enters email + password on the React front end.  
+  2. **Server Verification**: Server (in `/auth/login`) checks `User.hashed_password` via `bcrypt.compare()`.  
+  3. **JWT Issuance**: If valid:
+     - Create a JWT (e.g. `jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' })`).
+     - Return the token to the frontend.  
+  4. **Token Storage**: Frontend stores token in `localStorage` under `token`, plus stores user data in `localStorage.user`.  
+  5. **Subsequent API Requests**: The React app includes `Authorization: Bearer <token>` for all protected endpoints.  
+  6. **Auth Middleware**: On each request, the server’s `authenticateUser` (in `server/middleware/auth.js`) verifies the token and sets `req.user = user`.
 
-### Local Authentication (Email/Password)
-1. User submits login credentials
-2. Server validates credentials and generates a JWT token
-3. Token is returned to the client and stored in localStorage
-4. Client includes the token in the Authorization header for subsequent requests
-5. Protected routes use the authenticateUser middleware to validate the token
+- **Technical Requirements**  
+  - **Environment**: Must have `JWT_SECRET` in `.env`.  
+  - **Hashed Passwords**: DB must store only `hashed_password` using a salt (e.g. 10 rounds with bcrypt).  
+  - **Response**: Return the newly minted JWT + user data in JSON on success.  
+  - **Frontend**: Must store `token` and `user` in localStorage (or sessionStorage if you prefer) so you can add `Authorization: Bearer` in subsequent fetch calls.  
+  - **Logout**: Involves removing `token` + `user` in localStorage. The server calls `/logout` to try to also clear any server session/cookies, though it’s mostly a “client-based logout” for JWT.
 
-### Google OAuth Authentication
-1. User clicks "Sign in with Google" button
-2. User is redirected to Google's authentication page
-3. After successful authentication, Google redirects back to our callback URL
-4. Server creates or updates the user record and generates a JWT token
-5. User is redirected to the frontend with user data and token
-6. Frontend stores the token in localStorage
-7. Protected routes use the same authenticateUser middleware
+---
 
-## Implementation Details
+### 1.2 Google OAuth (Session + JWT Hybrid)
 
-### Server-side
-- JWT tokens are generated in auth.js routes
-- The authenticateUser middleware in middleware/auth.js validates tokens
-- Passport.js is configured for Google OAuth in config/passport.js
+- **Flow**  
+  1. **User Chooses “Sign in with Google”**: The app redirects to the Google OAuth page using Passport’s Google Strategy.  
+  2. **Passport + Session**: On successful Google callback, Passport creates (or updates) the user in the database, storing a session for that user.  
+  3. **JWT Issuance**: Coparently then generates a **JWT** to pass to the React client, just like local auth does.  
+  4. **Redirect to Frontend**: The server builds a redirect URL with the user’s data and token appended (e.g. `?data=...`) so the React side can parse it and store the token in `localStorage`.  
+  5. **Subsequent API Requests**: Exactly the same as local email/password—React includes `Authorization: Bearer <token>`.
 
-### Client-side
-- The AuthContext provides authentication state and methods
-- The api.js service handles token storage and includes tokens in requests
-- Protected routes check authentication status via the useAuth hook
+- **Technical Requirements**  
+  - **Environment**: Must have:
+    - `GOOGLE_CLIENT_ID`
+    - `GOOGLE_CLIENT_SECRET`
+    - `GOOGLE_CALLBACK_URL` (often `http://localhost:3001/auth/google/callback` in dev)  
+  - **Session Secret**: Must have `SESSION_SECRET` in `.env`.  
+  - **Server**: Must use `passport.initialize()` and `passport.session()`, plus the GoogleStrategy in `server/config/passport.js`.  
+  - **Callback**: Must handle the user creation or lookup in `GoogleStrategy` and then call `done(null, user)`.  
+  - **Token Return**: **After** Google logs the user in, generate a JWT and attach it to the redirect so the front end can store it.
 
-## Why Separate Authentication Methods?
+---
 
-The current hybrid approach (using both session-based and token-based authentication) likely evolved for the following reasons:
+## 2. Session vs. JWT Distinctions
 
-1. **OAuth Integration**: Passport.js is a popular and well-established library for implementing OAuth authentication. It uses sessions by default to maintain user state after OAuth redirection.
+Coparently uses **sessions** primarily for **Google OAuth** (due to Passport’s approach) but uses **JWT** for the **client’s main API authentication**. That means:
 
-2. **API Security**: JWT tokens provide a stateless way to secure API endpoints, which is beneficial for scalability and works well with modern frontend frameworks.
+- A user might have a server session from Google, but the front end also must have a JWT to authenticate REST endpoints (e.g. `/api/children`).  
+- The session is short-lived if user never hits server endpoints that rely on Passport session.  
+- The JWT is the single source of truth for all protected routes (`authenticateUser` in `auth.js`).
 
-3. **Gradual Evolution**: The application may have started with session-based authentication and later added JWT support for API endpoints as the application grew.
+**Important**: If the user only logs in with Google, we still store a JWT locally in the browser for all subsequent calls. The session is mostly a leftover from the OAuth handshake.
 
-4. **Different Use Cases**: Sessions work well for browser-based authentication flows (like OAuth), while JWTs are better suited for API authentication, especially for mobile apps or third-party integrations.
+---
 
-This separation isn't necessarily a problem, but it does add complexity to the codebase and can lead to confusion about which authentication method is being used where.
+## 3. Roles: Child vs. Parent
 
-## Considerations for Improvement
+- **Role Column**: The database `users` table has a `role` field with either `parent` or `child`.  
+- **Parent**: Can link with partners, see advanced features, etc.  
+- **Child**: Minimal features, typically sees only the child-facing dashboards.  
+- **Front End**: After login, we store `user.role`.  
+  - If `role === 'child'`, we redirect to `child-dashboard`.  
+  - If `role === 'parent'`, we redirect to `/app`.
 
-Having two authentication methods (session-based and token-based) can lead to confusion and potential security issues. Consider standardizing on one approach:
+---
 
-1. **Fully JWT-based approach**:
-   - Remove session-based authentication
-   - Use JWT for all authentication, including OAuth
-   - Simplifies the authentication flow and reduces server-side state
+## 4. Detailed Logout Requirements
 
-2. **Fully session-based approach**:
-   - Use sessions for all authentication
-   - Store session IDs in cookies with appropriate security settings
-   - May provide better security for web applications
+**Logout** must handle:
+1. **Client**: Remove `localStorage.token`, `localStorage.user`, plus any custom keys (`coparently_*`).  
+2. **Cookies**: Attempt to delete cookies for `connect.sid`, `session`, `jwt`, etc.  
+3. **Server**:  
+   - If `req.logout` exists (Passport session), call it.  
+   - Destroy `req.session` if it exists.  
+   - Clear session cookies.
 
-The current hybrid approach works but may be more complex to maintain and understand. 
+**Why**: Even though the JWT is purely client-based, the server tries to kill any sessions from Google OAuth. That ensures a full logout.
+
+---
+
+## 5. Environment Variable Checklist
+
+These **must** be set correctly (for dev or production) in your `.env`:
+
+1. **JWT_SECRET**: Any random secure string, e.g. `JWT_SECRET=some_long_random_key`.
+2. **SESSION_SECRET**: Another random secure string for the Express session, e.g. `SESSION_SECRET=another_random_secure_string`.
+3. **GOOGLE_CLIENT_ID**: Provided by Google.
+4. **GOOGLE_CLIENT_SECRET**: Provided by Google.
+5. **GOOGLE_CALLBACK_URL**: The callback route, e.g. `http://localhost:3001/auth/google/callback`.
+6. **CLIENT_URL**: Typically `http://localhost:3000` in dev, used to redirect after Google OAuth.
+
+---
+
+## 6. Common Failure Points & How to Avoid Them
+
+1. **Missing / Wrong JWT_SECRET**  
+   - **Symptom**: All token verifications fail with “Invalid token.”  
+   - **Fix**: Double-check `.env` has `JWT_SECRET`.  
+2. **User Has No “role”**  
+   - **Symptom**: The front end can’t decide child vs. parent. Possibly breaks routing.  
+   - **Fix**: Ensure DB migrations are up to date, default user role to `parent` if not specified.  
+3. **Google OAuth Callback Hard-Coded**  
+   - **Symptom**: In dev, you see a “redirect_uri_mismatch.”  
+   - **Fix**: Put the correct domain in `GOOGLE_CALLBACK_URL` and in the Google Cloud console.  
+4. **Cookies Not Clearing**  
+   - **Symptom**: After logout, you’re still recognized as logged in.  
+   - **Fix**: Ensure the logout route calls `req.session.destroy()` and calls `res.clearCookie('connect.sid')` (or similar).  
+5. **React Not Sending JWT**  
+   - **Symptom**: Protected endpoints always respond with “401 Unauthorized” or “No token provided.”  
+   - **Fix**: Check that your fetch calls in React have `Authorization: Bearer ${token}` set in the headers.
+
+---
+
+## 7. Testing Steps to Confirm It Won’t Break
+
+1. **Local Auth**  
+   1. Register a new user.  
+   2. Login with that user.  
+   3. Check `localStorage.token` is set, confirm you can call a protected endpoint.  
+   4. Hit `Logout` -> confirm `token` is removed, session is destroyed.  
+2. **Google Auth**  
+   1. Click “Sign in with Google.”  
+   2. Accept Google’s prompt if not done before.  
+   3. On success, ensure you’re redirected to the React app with a `?data=...` param.  
+   4. Confirm `token` is now in `localStorage`.  
+   5. `Logout`, ensure no stale session remains.  
+3. **Check Child vs. Parent**  
+   1. Mark a user in DB as `role='child'`.  
+   2. Login. Confirm the front end goes to child dashboard.  
+   3. Mark a user in DB as `role='parent'`.  
+   4. Login. Confirm you have standard parent routes.  
+
+---
+
+## 8. Summary
+
+1. **Any** user—child or parent—**MUST** have a valid JWT for all `/api` routes.  
+2. Google sign-in still uses a session for the handshake, but we quickly generate a JWT and hand it to the front end.  
+3. The environment must have consistent, correct secrets for `JWT_SECRET`, `SESSION_SECRET`, and Google credentials.  
+4. A robust **logout** procedure ensures all session data, cookies, and local browser state are purged.  
+
+By adhering strictly to these **technical** details, Coparently’s auth flow stays consistent and stable, preventing partial logouts, missing tokens, or broken Google callbacks.

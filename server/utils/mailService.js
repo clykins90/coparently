@@ -31,6 +31,46 @@ async function sendPartnerInvitation(partnerEmail, invitingUserName) {
 }
 
 /**
+ * Send an invitation email to a child user
+ * @param {string} childEmail - The email address of the child to invite
+ * @param {string} firstName - The first name of the child
+ * @param {string} lastName - The last name of the child
+ * @param {string} invitationToken - The unique token for the invitation
+ * @param {string} parentName - The name of the parent sending the invitation
+ * @returns {Promise<Object>} - A promise that resolves to an object with success status
+ */
+async function sendChildUserInvitation(childEmail, firstName, lastName, invitationToken, parentName) {
+  try {
+    const inviteUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/child-signup?token=${invitationToken}`;
+    
+    const msg = {
+      to: childEmail,
+      from: 'court.lykins@gmail.com', // Verified sender email
+      subject: `${parentName} has invited you to join Coparently`,
+      text: `Hello ${firstName},\n\n${parentName} has invited you to join Coparently, a platform for co-parenting coordination. Click the link below to create your account:\n\n${inviteUrl}\n\nThis invitation will expire in 48 hours.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #4a5568;">Hello ${firstName},</h2>
+          <p>${parentName} has invited you to join <strong>Coparently</strong>, a platform for co-parenting coordination.</p>
+          <p>Click the button below to create your account:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${inviteUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Create Your Account</a>
+          </div>
+          <p style="color: #718096; font-size: 14px;">This invitation will expire in 48 hours.</p>
+        </div>
+      `,
+    };
+    
+    const response = await sgMail.send(msg);
+    console.log(`Child invitation email sent to ${childEmail}`);
+    return { success: true, message: 'Child invitation email sent successfully', response };
+  } catch (error) {
+    console.error('Error sending child invitation email:', error);
+    return { success: false, message: 'Failed to send child invitation email', error: error.message };
+  }
+}
+
+/**
  * Send a test email to verify SendGrid is working
  * @param {string} toEmail - The email address to send the test to
  * @returns {Promise<Object>} - A promise that resolves to an object with success status
@@ -56,5 +96,6 @@ async function sendTestEmail(toEmail) {
 
 module.exports = {
   sendPartnerInvitation,
+  sendChildUserInvitation,
   sendTestEmail
 }; 

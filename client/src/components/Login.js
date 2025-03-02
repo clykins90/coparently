@@ -82,7 +82,12 @@ function Login() {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        navigate('/app');
+        // Redirect based on user role
+        if (result.isChild) {
+          navigate('/child-dashboard');
+        } else {
+          navigate('/app');
+        }
       } else {
         setError(result.message || 'Login failed. Please check your credentials.');
       }

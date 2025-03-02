@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in (persisted)
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -24,8 +24,19 @@ export function AuthProvider({ children }) {
   // Login function
   const login = async (email, password, googleUserData = null) => {
     try {
-      // If googleUserData is provided, use that instead of making an API call
+      // If googleUserData is provided, skip calling API
       if (googleUserData) {
+        console.log('[AuthContext] Processing Google login data', { 
+          hasToken: !!googleUserData.token,
+          userId: googleUserData.userId,
+          email: googleUserData.email,
+          role: googleUserData.role || 'parent'
+        });
+        
+        if (!googleUserData.token) {
+          return { success: false, message: 'Authentication failed: No token provided' };
+        }
+        
         const userData = {
           id: googleUserData.userId,
           firstName: googleUserData.firstName,
@@ -39,19 +50,15 @@ export function AuthProvider({ children }) {
           role: googleUserData.role || 'parent'
         };
         
-        // Store token if provided
-        if (googleUserData.token) {
-          localStorage.setItem('token', googleUserData.token);
-        }
-        
+        localStorage.setItem('token', googleUserData.token);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        return { success: true };
+        
+        return { success: true, isChild: userData.role === 'child' };
       }
       
       // Regular email/password login
-      const data = await authAPI.login(email, password);
-      
+      const data = await authAPI.login({ email, password });
       if (data.success) {
         const userData = {
           id: data.userId,
@@ -61,22 +68,25 @@ export function AuthProvider({ children }) {
           phone: data.phone,
           hasPartner: data.hasPartner,
           requiresProfile: data.requiresProfile,
-          authProvider: data.authProvider || 'local',
+          authProvider: data.authProvider,
           profilePicture: data.profilePicture,
-          role: data.role || 'parent'
+          role: data.role
         };
         
-        // Token is stored in localStorage by the authAPI.login function
-        
+        // The token is put in localStorage by authAPI.login
+        if (!localStorage.getItem('token') && data.token) {
+          localStorage.setItem('token', data.token);
+        }
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        return { success: true };
+        
+        return { success: true, isChild: data.role === 'child' };
       } else {
         return { success: false, message: data.message || 'Login failed' };
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, message: 'An error occurred during login' };
+      console.error('[AuthContext] Login error:', error);
+      return { success: false, message: error.message || 'An error occurred during login' };
     }
   };
 
@@ -84,7 +94,6 @@ export function AuthProvider({ children }) {
   const register = async (userData) => {
     try {
       const data = await authAPI.register(userData);
-      
       if (data.success) {
         return { success: true };
       } else {
@@ -99,12 +108,51 @@ export function AuthProvider({ children }) {
   // Logout function
   const logout = async () => {
     try {
-      await authAPI.logout(); // This will clear the token from localStorage
+      console.log('[AuthContext] Starting logout process');
+      
+      // Attempt server logout
+      let serverLogoutSuccessful = false;
+      try {
+        const result = await authAPI.logout();
+        serverLogoutSuccessful = true;
+        console.log('[AuthContext] Server logout successful:', result);
+      } catch (serverError) {
+        console.error('[AuthContext] Server logout failed:', serverError);
+        console.log('[AuthContext] Continuing with client-side logout...');
+      }
+      
+      // Clear localStorage data
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('coparently_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      sessionStorage.clear();
       setUser(null);
-      return { success: true };
+      
+      // Attempt to clear cookies (some modern browsers may restrict this)
+      document.cookie
+        .split(';')
+        .forEach(c => {
+          const cookieName = c.trim().split('=')[0];
+          if (cookieName) {
+            document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+            document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/api`;
+            document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/auth`;
+            document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          }
+        });
+      
+      return { success: true, serverLogoutSuccessful };
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('[AuthContext] Logout error:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+      setUser(null);
+      
       return { success: false, message: 'An error occurred during logout' };
     }
   };
@@ -113,12 +161,8 @@ export function AuthProvider({ children }) {
   const updateProfile = async (profileData) => {
     try {
       const data = await userAPI.updateProfile(user.id, profileData);
-      
       if (data.success) {
-        const updatedUser = {
-          ...user,
-          ...profileData
-        };
+        const updatedUser = { ...user, ...profileData };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         return { success: true };
@@ -135,12 +179,8 @@ export function AuthProvider({ children }) {
   const updateProfilePicture = async (imageFile) => {
     try {
       const data = await userAPI.updateProfilePicture(user.id, imageFile);
-      
       if (data.success) {
-        const updatedUser = {
-          ...user,
-          profilePicture: data.profilePicture
-        };
+        const updatedUser = { ...user, profilePicture: data.profilePicture };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         return { success: true, profilePicture: data.profilePicture };
@@ -157,12 +197,8 @@ export function AuthProvider({ children }) {
   const removeProfilePicture = async () => {
     try {
       const data = await userAPI.removeProfilePicture(user.id);
-      
       if (data.success) {
-        const updatedUser = {
-          ...user,
-          profilePicture: null
-        };
+        const updatedUser = { ...user, profilePicture: null };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
         return { success: true };
@@ -175,17 +211,14 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Check if user is authenticated with Google
   const isGoogleAuthenticated = () => {
     return user && user.authProvider === 'google';
   };
 
-  // Check if user is a child
   const isChild = () => {
     return user && user.role === 'child';
   };
 
-  // Value object that will be passed to any consumer components
   const value = {
     user,
     loading,
@@ -206,4 +239,4 @@ export function AuthProvider({ children }) {
   );
 }
 
-export default AuthContext; 
+export default AuthContext;
