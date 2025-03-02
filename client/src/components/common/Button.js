@@ -20,12 +20,12 @@ const Button = ({
   
   // Define variant styles
   const variantStyles = {
-    primary: "bg-primary bg-opacity-90 text-white hover:bg-primary-dark focus:ring-primary",
-    secondary: "bg-secondary text-gray-700 hover:bg-secondary-dark focus:ring-secondary",
-    subtle: "bg-primary bg-opacity-10 text-primary hover:bg-opacity-20 focus:ring-primary",
-    danger: "bg-red-500 bg-opacity-90 text-white hover:bg-red-600 focus:ring-red-500",
-    dangerSubtle: "bg-red-500 bg-opacity-10 text-red-600 hover:bg-opacity-20 focus:ring-red-500",
-    ghost: "bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-500",
+    primary: "bg-primary-dark text-white hover:bg-primary focus:ring-primary font-semibold",
+    secondary: "bg-secondary text-gray-800 hover:bg-secondary-dark focus:ring-secondary font-medium",
+    subtle: "bg-primary-dark bg-opacity-90 text-white hover:bg-primary focus:ring-primary font-medium",
+    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 font-medium",
+    dangerSubtle: "bg-red-500 bg-opacity-20 text-red-700 hover:bg-opacity-30 focus:ring-red-500 font-medium",
+    ghost: "bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-500 font-medium",
   };
   
   // Define size styles

@@ -106,25 +106,25 @@ async function apiFileRequest(endpoint, formData) {
 // Authentication endpoints
 export const authAPI = {
   login: (credentials) =>
-    apiRequest('/api/auth/login', {
+    apiRequest('/api/login', {
       method: 'POST',
       body: JSON.stringify(credentials)
     }),
 
   register: (userData) =>
-    apiRequest('/api/auth/register', {
+    apiRequest('/api/register', {
       method: 'POST',
       body: JSON.stringify(userData)
     }),
 
   googleLogin: (tokenId) =>
-    apiRequest('/api/auth/google', {
+    apiRequest('/api/google', {
       method: 'POST',
       body: JSON.stringify({ tokenId })
     }),
 
   logout: async () => {
-    // Clears token locally, tries both /auth/logout and /api/auth/logout
+    // Clears token locally, tries both /auth/logout and /api/logout
     try {
       localStorage.removeItem('token');
       console.log('[AUTH] Removed token from localStorage');
@@ -134,8 +134,8 @@ export const authAPI = {
         // Attempt the /auth/logout route
         result = await apiRequest('/auth/logout', { method: 'POST' });
       } catch (firstAttemptError) {
-        console.log('[AUTH] /auth/logout failed, attempting /api/auth/logout');
-        result = await apiRequest('/api/auth/logout', { method: 'POST' });
+        console.log('[AUTH] /auth/logout failed, attempting /api/logout');
+        result = await apiRequest('/api/logout', { method: 'POST' });
       }
       console.log('[AUTH] Server logout result:', result);
 
@@ -157,15 +157,15 @@ export const authAPI = {
     }
   },
 
-  getCurrentUser: () => apiRequest('/api/auth/me'),
+  getCurrentUser: () => apiRequest('/api/me'),
 
-  checkAuth: () => apiRequest('/api/auth/check'),
+  checkAuth: () => apiRequest('/api/check'),
 
   verifyChildInvitation: (token) =>
-    apiRequest(`/api/auth/verify-child-invitation?token=${token}`),
+    apiRequest(`/api/verify-child-invitation?token=${token}`),
 
   completeChildSignup: (data) =>
-    apiRequest('/api/auth/complete-child-signup', {
+    apiRequest('/api/complete-child-signup', {
       method: 'POST',
       body: JSON.stringify(data)
     })

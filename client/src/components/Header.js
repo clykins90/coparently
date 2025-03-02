@@ -33,8 +33,8 @@ function Header({ handleLogout, collapsed }) {
   }, [user]);
   
   return (
-    <header className="bg-white shadow-sm py-2 fixed top-0 right-0 z-20 w-full">
-      <div className="flex justify-end items-center px-4">
+    <header className="bg-white shadow-sm py-2 fixed top-0 right-0 z-20 w-full h-16">
+      <div className="flex justify-end items-center px-4 h-full">
         <div className="flex items-center">
           {user && (
             <div className="relative" ref={dropdownRef}>
@@ -48,10 +48,10 @@ function Header({ handleLogout, collapsed }) {
                   lastName={user.lastName}
                   size="xs"
                 />
-                <span className="font-medium text-gray-800 text-sm">
+                <span className="font-medium text-gray-900 text-sm">
                   {user.firstName} {user.lastName}
                 </span>
-                <FaChevronDown className={`text-gray-600 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <FaChevronDown className={`text-gray-700 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {/* Dropdown Menu */}
@@ -59,10 +59,10 @@ function Header({ handleLogout, collapsed }) {
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-30">
                   <Link 
                     to="/app/settings" 
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    className="block px-4 py-2 text-sm text-gray-800 font-medium hover:bg-gray-100 flex items-center"
                     onClick={() => setDropdownOpen(false)}
                   >
-                    <FaCog className="mr-2" />
+                    <FaCog className="mr-2 text-primary-dark" />
                     Settings
                   </Link>
                   <button 
@@ -70,9 +70,9 @@ function Header({ handleLogout, collapsed }) {
                       setDropdownOpen(false);
                       handleLogout();
                     }} 
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-800 font-medium hover:bg-gray-100 flex items-center"
                   >
-                    <FaSignOutAlt className="mr-2" />
+                    <FaSignOutAlt className="mr-2 text-red-600" />
                     Sign Out
                   </button>
                 </div>

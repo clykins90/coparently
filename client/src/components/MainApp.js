@@ -123,8 +123,8 @@ function MainApp() {
         <Header handleLogout={handleLogout} collapsed={collapsed} />
         <PartnerRequestNotification />
         
-        {/* Main Content */}
-        <div className="p-6 pt-14">
+        {/* Main Content - pt-24 and mt-2 ensure enough space for header and notifications */}
+        <div className="p-6 pt-24 mt-2">
           <Routes>
             <Route path="communication" element={<Communication />} />
             <Route path="finances" element={<Finances />} />
