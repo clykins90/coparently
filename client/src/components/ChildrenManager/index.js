@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FaPlus } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FaPlus, FaExclamationTriangle } from 'react-icons/fa';
 import Button from '../common/Button';
 
 // Custom hooks
@@ -20,23 +20,38 @@ const ChildrenManager = () => {
   const [isChildModalOpen, setIsChildModalOpen] = useState(false);
   // If editing an existing child, store that child object here (otherwise null)
   const [editingChild, setEditingChild] = useState(null);
+  // Track if initial data load has been attempted
+  const [initialLoadAttempted, setInitialLoadAttempted] = useState(false);
 
   // Hooks for managing child data
   const childProfiles = useChildProfiles();
   const childUsers = useChildUsers();
 
   // Combine data for display
-  const { combinedChildren } = useCombinedChildren(
+  const { combinedChildren, isLoadingParents } = useCombinedChildren(
     childProfiles.children,
     childUsers.childUsers
   );
 
+  // Memoize fetch functions to prevent unnecessary re-renders
+  const fetchData = useCallback(async () => {
+    if (initialLoadAttempted) return;
+    
+    setInitialLoadAttempted(true);
+    try {
+      await Promise.all([
+        childProfiles.fetchChildren(),
+        childUsers.fetchChildUsers()
+      ]);
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+    }
+  }, [childProfiles, childUsers, initialLoadAttempted]);
+
   // Fetch data on component mount
   useEffect(() => {
-    childProfiles.fetchChildren();
-    childUsers.fetchChildUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   // Open modal for creating a *new* child (with or without user account)
   const handleOpenAddChildModal = () => {
@@ -94,12 +109,20 @@ const ChildrenManager = () => {
       // For simplicity, let's not auto-remove user accounts here unless you want that logic
     }
 
-    // Finally, re-fetch data
-    await childProfiles.fetchChildren();
-    await childUsers.fetchChildUsers();
-
     // Close the modal
     handleCloseChildModal();
+    
+    // Refresh data after a short delay to avoid race conditions
+    setTimeout(async () => {
+      try {
+        await Promise.all([
+          childProfiles.fetchChildren(),
+          childUsers.fetchChildUsers()
+        ]);
+      } catch (error) {
+        console.error('Error refreshing data after submission:', error);
+      }
+    }, 500);
   };
 
   // Deletion logic
@@ -109,13 +132,53 @@ const ChildrenManager = () => {
   };
 
   // Deletion logic for child user link only
-  const handleDeleteChildUser = async (userId) => {
-    await childUsers.deleteChildUser(userId);
+  const handleDeleteChildUser = async (userId, deleteUser = false) => {
+    await childUsers.deleteChildUser(userId, deleteUser);
+  };
+
+  // Combined deletion logic
+  const handleDeleteChildWithOptions = async (childId, userId = null) => {
+    try {
+      if (childId) {
+        // If we have both childId and userId, use the combined endpoint
+        if (userId) {
+          await childProfiles.deleteChildWithUser(childId, true);
+        } else {
+          // If we only have childId, just delete the child profile
+          await childProfiles.deleteChild(childId);
+        }
+      } else if (userId) {
+        // If we only have userId, just delete the user account link
+        // Pass true to delete the user account completely
+        await childUsers.deleteChildUser(userId, true);
+      }
+      
+      // Refresh data after deletion
+      await Promise.all([
+        childProfiles.fetchChildren(),
+        childUsers.fetchChildUsers()
+      ]);
+    } catch (error) {
+      console.error('Error during child deletion:', error);
+    }
+  };
+
+  // Handle retry when data fetching fails
+  const handleRetryFetch = async () => {
+    try {
+      await Promise.all([
+        childProfiles.fetchChildren(),
+        childUsers.fetchChildUsers()
+      ]);
+    } catch (error) {
+      console.error('Error retrying data fetch:', error);
+    }
   };
 
   // Display any loading or notification from the hooks
-  const isLoading = childProfiles.isLoading || childUsers.isLoading;
+  const isLoading = childProfiles.isLoading || childUsers.isLoading || isLoadingParents;
   const notification = childProfiles.notification || childUsers.notification;
+  const hasError = childProfiles.fetchError || childUsers.fetchError;
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -137,22 +200,44 @@ const ChildrenManager = () => {
         <p className="text-gray-600">Manage your children's profiles and optional child user accounts</p>
       </div>
 
+      {hasError && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-4 flex items-center">
+          <FaExclamationTriangle className="mr-2" />
+          <div>
+            <p className="font-bold">Error loading data</p>
+            <p>There was a problem loading the children data.</p>
+            <button 
+              onClick={handleRetryFetch}
+              className="mt-2 bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end mb-4">
         <Button 
           onClick={handleOpenAddChildModal}
           className="flex items-center"
           icon={<FaPlus />}
+          variant="primary"
         >
           Add Child
         </Button>
       </div>
 
-      <ChildrenTable
-        combinedChildren={combinedChildren}
-        onEditChild={handleOpenEditChildModal}
-        onDeleteChild={handleDeleteChild}
-        onDeleteChildUser={handleDeleteChildUser}
-      />
+      {isLoading && !hasError ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500">Loading children data...</p>
+        </div>
+      ) : (
+        <ChildrenTable
+          combinedChildren={combinedChildren}
+          onEditChild={handleOpenEditChildModal}
+          onDeleteChildWithOptions={handleDeleteChildWithOptions}
+        />
+      )}
 
       {/* Unified Child Modal */}
       {isChildModalOpen && (

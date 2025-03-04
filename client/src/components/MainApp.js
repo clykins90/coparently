@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Communication from './Communication';
+import ChildCommunication from './ChildCommunication';
 import Finances from './Finances';
 import Calendar from './Calendar';
 import Settings from './Settings';
+import ChildSettings from './ChildSettings';
+import CalendarSyncSettings from './CalendarSyncSettings';
 import ChildrenManager from './ChildrenManager/index';
 import PartnerRequestNotification from './PartnerRequestNotification';
 import Header from './Header';
@@ -21,23 +24,34 @@ import { authAPI } from '../services/api';
 
 function MainApp() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const location = useLocation();
+  const { user, logout, refreshToken } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const isChild = user?.role === 'child';
 
-  // Check for token on component mount
+  // Check for token on component mount and when location changes
   useEffect(() => {
     const checkToken = async () => {
+      // Check if calendar connection is in progress
+      const calendarConnectionInProgress = localStorage.getItem('coparently_calendar_connection_in_progress') === 'true';
+      
       // If user is logged in but no token exists, try to get a new one
       if (user && !localStorage.getItem('token')) {
         console.log('User is logged in but no token found. Attempting to get a new token...');
         try {
-          // Call the auth check endpoint which should return a token
-          const authCheck = await authAPI.checkAuth();
-          if (authCheck.authenticated && authCheck.token) {
-            console.log('Successfully retrieved new token');
-            localStorage.setItem('token', authCheck.token);
-          } else {
-            console.warn('Failed to get a new token. You may need to log in again.');
+          // Try to refresh the token
+          const result = await refreshToken();
+          if (!result.success) {
+            console.warn('Failed to refresh token. You may need to log in again.');
+            
+            // Only redirect to login if we're not already on a public route and not in the middle of calendar connection
+            if (!location.pathname.includes('/login') && 
+                !location.pathname.includes('/register') && 
+                !location.pathname.includes('/auth-success') &&
+                !location.pathname.includes('/calendar-connect-callback') &&
+                !calendarConnectionInProgress) {
+              navigate('/login', { state: { message: 'Your session has expired. Please log in again.' } });
+            }
           }
         } catch (error) {
           console.error('Error checking authentication:', error);
@@ -46,7 +60,7 @@ function MainApp() {
     };
     
     checkToken();
-  }, [user]);
+  }, [user, location, navigate, refreshToken]);
 
   const handleLogout = async () => {
     const result = await logout();
@@ -88,24 +102,31 @@ function MainApp() {
               {!collapsed && <span>Communication</span>}
             </Link>
           </li>
-          <li>
-            <Link 
-              to="finances" 
-              className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
-            >
-              <FaDollarSign className="text-lg" />
-              {!collapsed && <span>Finances</span>}
-            </Link>
-          </li>
-          <li>
-            <Link 
-              to="calendar" 
-              className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
-            >
-              <FaCalendarAlt className="text-lg" />
-              {!collapsed && <span>Calendar</span>}
-            </Link>
-          </li>
+          
+          {/* Only show Finances and Calendar for parents */}
+          {!isChild && (
+            <>
+              <li>
+                <Link 
+                  to="finances" 
+                  className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
+                >
+                  <FaDollarSign className="text-lg" />
+                  {!collapsed && <span>Finances</span>}
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="calendar" 
+                  className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'} p-2 rounded-lg hover:bg-primary-dark transition-colors duration-200`}
+                >
+                  <FaCalendarAlt className="text-lg" />
+                  {!collapsed && <span>Calendar</span>}
+                </Link>
+              </li>
+            </>
+          )}
+          
           <li>
             <Link 
               to="settings" 
@@ -121,16 +142,38 @@ function MainApp() {
       {/* Content area with header and main content */}
       <div className={`${collapsed ? 'ml-16' : 'ml-56'} flex-1 transition-all duration-300 relative`}>
         <Header handleLogout={handleLogout} collapsed={collapsed} />
-        <PartnerRequestNotification />
+        
+        {/* Only show partner request notifications for parents */}
+        {!isChild && <PartnerRequestNotification />}
         
         {/* Main Content - pt-24 and mt-2 ensure enough space for header and notifications */}
         <div className="p-6 pt-24 mt-2">
           <Routes>
-            <Route path="communication" element={<Communication />} />
-            <Route path="finances" element={<Finances />} />
-            <Route path="calendar" element={<Calendar />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="communication" />} />
+            {/* Use different Communication component based on user role */}
+            <Route path="communication" element={
+              isChild ? <ChildCommunication /> : <Communication />
+            } />
+            
+            {/* Only provide routes to Finances and Calendar for parents */}
+            {!isChild ? (
+              <>
+                <Route path="finances" element={<Finances />} />
+                <Route path="calendar" element={<Calendar />} />
+                <Route path="calendar-sync-settings" element={<CalendarSyncSettings />} />
+                <Route path="settings" element={<Settings />} />
+              </>
+            ) : (
+              // Use ChildSettings for children
+              <Route path="settings" element={<ChildSettings />} />
+            )}
+            
+            {/* Default route based on user role */}
+            <Route path="/" element={
+              <Navigate to="communication" />
+            } />
+            <Route path="*" element={
+              <Navigate to="communication" />
+            } />
           </Routes>
         </div>
       </div>

@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { messageAPI } from '../services/api';
-import { FaPaperPlane, FaCircle } from 'react-icons/fa';
+import { FaPaperPlane, FaCircle, FaRobot } from 'react-icons/fa';
 
-function ChildDashboard() {
+function ChildCommunication() {
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [bypassAiFilter, setBypassAiFilter] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { socket, connected, joinConversation, leaveConversation } = useSocket();
-  const chatEndRef = React.useRef(null);
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     if (!user) {
@@ -24,7 +25,6 @@ function ChildDashboard() {
 
     // Check if user is a child
     if (user.role !== 'child') {
-      navigate('/app');
       return;
     }
 
@@ -57,6 +57,15 @@ function ChildDashboard() {
       const fetchMessages = async () => {
         try {
           const data = await messageAPI.getMessages(selectedConversation.id);
+          console.log('Child component fetched initial messages:', data.messages);
+          // Log timestamp information for the first message if available
+          if (data.messages && data.messages.length > 0) {
+            console.log('Child first message timestamp data:', {
+              timestamp: data.messages[0].timestamp,
+              createdAt: data.messages[0].createdAt,
+              created_at: data.messages[0].created_at
+            });
+          }
           setChatHistory(data.messages);
         } catch (err) {
           console.error('Error fetching messages:', err);
@@ -77,6 +86,15 @@ function ChildDashboard() {
     if (!socket) return;
     
     const handleNewMessage = (newMessage) => {
+      console.log('Child component received new message:', newMessage);
+      // Log timestamp information for debugging
+      if (newMessage) {
+        console.log('Child message timestamp data:', {
+          timestamp: newMessage.timestamp,
+          createdAt: newMessage.createdAt,
+          created_at: newMessage.created_at
+        });
+      }
       setChatHistory(prevMessages => [...prevMessages, newMessage]);
     };
     
@@ -103,7 +121,12 @@ function ChildDashboard() {
     setIsLoading(true);
     
     try {
-      const response = await messageAPI.sendMessage(selectedConversation.id, user.id, message);
+      const response = await messageAPI.sendMessage(
+        selectedConversation.id, 
+        user.id, 
+        message,
+        bypassAiFilter
+      );
       
       if (!response.success) {
         alert(response.error || 'Failed to send message');
@@ -122,7 +145,28 @@ function ChildDashboard() {
   };
 
   const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (!timestamp) return 'Invalid Date';
+    
+    try {
+      // Try to parse the timestamp in different formats
+      const date = new Date(timestamp);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date format:', timestamp);
+        return 'Invalid Date';
+      }
+      
+      // Format the date
+      return date.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Invalid Date';
+    }
   };
 
   const getParentName = (conversation) => {
@@ -136,7 +180,25 @@ function ChildDashboard() {
     <div className="max-w-4xl mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Messages</h2>
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
+          {/* AI Filter Toggle (only visible in development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="flex items-center">
+              <span className="text-sm mr-2">AI Filter:</span>
+              <button
+                onClick={() => setBypassAiFilter(!bypassAiFilter)}
+                className={`flex items-center px-3 py-1 rounded-md text-sm ${
+                  bypassAiFilter 
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                <FaRobot className="mr-1" />
+                {bypassAiFilter ? 'Off' : 'On'}
+              </button>
+            </div>
+          )}
+          
           {connected ? (
             <div className="flex items-center text-green-500">
               <FaCircle className="w-2 h-2 mr-2" />
@@ -172,7 +234,7 @@ function ChildDashboard() {
                 >
                   <div className="font-medium">{getParentName(conversation)}</div>
                   <div className="text-xs text-gray-500">
-                    {conversation.conversation_type === 'parent_child' ? 'Parent' : 'Other'}
+                    {conversation.conversation_type === 'linked_child' ? 'Parent' : 'Other'}
                   </div>
                 </div>
               ))}
@@ -249,4 +311,4 @@ function ChildDashboard() {
   );
 }
 
-export default ChildDashboard; 
+export default ChildCommunication; 

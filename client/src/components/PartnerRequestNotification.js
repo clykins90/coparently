@@ -10,16 +10,33 @@ function PartnerRequestNotification() {
 
   useEffect(() => {
     const fetchPendingRequests = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
         const data = await partnerAPI.getPendingRequests(user.id);
-        if (data.success) {
+        
+        // Handle response with different possible structures
+        if (data && data.requests && Array.isArray(data.requests)) {
+          // Standard format: { success: true, requests: [...] }
           setPendingRequests(data.requests);
+        } else if (data && data.data && data.data.requests && Array.isArray(data.data.requests)) {
+          // Nested format: { success: true, data: { success: true, requests: [...] }}
+          setPendingRequests(data.data.requests);
+        } else if (data && Array.isArray(data)) {
+          // Direct array format
+          setPendingRequests(data);
+        } else {
+          // If data format is unexpected, set to empty array
+          setPendingRequests([]);
+          console.error('Unexpected response format:', data);
         }
       } catch (err) {
         console.error('Error fetching pending requests:', err);
+        setPendingRequests([]); // Ensure it's an empty array on error
       } finally {
         setLoading(false);
       }
@@ -37,7 +54,8 @@ function PartnerRequestNotification() {
     return null; // Don't show anything while loading
   }
   
-  if (pendingRequests.length === 0) {
+  // Extra safety check to ensure pendingRequests is an array
+  if (!pendingRequests || pendingRequests.length === 0) {
     return null; // Don't show anything if there are no pending requests
   }
   

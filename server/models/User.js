@@ -93,6 +93,15 @@ module.exports = (sequelize) => {
       as: 'createdSchedules'
     });
     
+    // Add associations for Google Calendar sync
+    User.hasOne(models.UserGoogleCalendar, {
+      foreignKey: 'user_id'
+    });
+    
+    User.hasMany(models.UserSelectedCalendar, {
+      foreignKey: 'user_id'
+    });
+    
     User.belongsToMany(models.CustodySchedule, {
       through: 'schedule_parents',
       foreignKey: 'user_id',
@@ -120,6 +129,13 @@ module.exports = (sequelize) => {
     User.hasMany(models.ChildParentLink, {
       foreignKey: 'parent_user_id',
       as: 'childLinks'
+    });
+    
+    // A user with role='child' can be linked to a Child profile
+    User.hasOne(models.Child, {
+      foreignKey: 'user_id',
+      as: 'childProfile',
+      constraints: false // Make this optional
     });
   };
 

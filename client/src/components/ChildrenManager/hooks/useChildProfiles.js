@@ -11,6 +11,8 @@ const useChildProfiles = () => {
   const [currentChild, setCurrentChild] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [notification, setNotification] = useState(null);
+  const [fetchAttempted, setFetchAttempted] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
 
   // Show a notification
   const showNotification = (title, message, type) => {
@@ -22,20 +24,43 @@ const useChildProfiles = () => {
 
   // Fetch children from backend
   const fetchChildren = async () => {
+    // Don't attempt to fetch again if we're already loading
+    if (isLoading) {
+      return;
+    }
+    
     setIsLoading(true);
+    setFetchError(null);
+    
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('/api/children', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        // Add timeout to prevent hanging requests
+        timeout: 10000
       });
       setChildren(response.data);
+      setFetchAttempted(true);
     } catch (err) {
       console.error('Error fetching children:', err);
+      setFetchError(err);
+      
       let errorMessage = 'Failed to fetch children data';
       if (err.response) {
         errorMessage = err.response.data.message || `Server error: ${err.response.status}`;
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please try again later.';
+      } else if (err.code === 'ERR_NETWORK') {
+        errorMessage = 'Network error. Please check your connection.';
       }
+      
       showNotification('Error', errorMessage, 'error');
+      
+      // If we've never successfully fetched data, set an empty array
+      if (!fetchAttempted) {
+        setChildren([]);
+      }
+      // Otherwise keep the previous data
     } finally {
       setIsLoading(false);
     }
@@ -49,20 +74,39 @@ const useChildProfiles = () => {
 
   // Delete a child
   const deleteChild = async (childId) => {
-    if (!window.confirm('Are you sure you want to delete this child profile?')) {
-      return { success: false, canceled: true };
-    }
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`/api/children/${childId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
       });
       showNotification('Success', 'Child deleted successfully', 'success');
       await fetchChildren();
       return { success: true };
     } catch (err) {
       console.error('Error deleting child:', err);
+      showNotification('Error', 'An error occurred while deleting child', 'error');
+      return { success: false, error: err };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete a child with option to delete user account
+  const deleteChildWithUser = async (childId, deleteUserAccount = false) => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`/api/children/${childId}/with-user?deleteUserAccount=${deleteUserAccount}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
+      });
+      showNotification('Success', 'Child deleted successfully', 'success');
+      await fetchChildren();
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting child with user account:', err);
       showNotification('Error', 'An error occurred while deleting child', 'error');
       return { success: false, error: err };
     } finally {
@@ -92,14 +136,16 @@ const useChildProfiles = () => {
       if (editingChild) {
         // Update existing child profile
         await axios.put(`/api/children/${editingChild.id}`, childPayload, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000
         });
         showNotification('Success', 'Child updated successfully', 'success');
         resultChildId = editingChild.id;
       } else {
         // Create new child profile
         const createRes = await axios.post('/api/children', childPayload, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000
         });
         showNotification('Success', 'Child added successfully', 'success');
         resultChildId = createRes.data.id; // new child's id
@@ -124,9 +170,12 @@ const useChildProfiles = () => {
     currentChild,
     formErrors,
     notification,
+    fetchError,
+    fetchAttempted,
     fetchChildren,
     resetFormForNewChild,
     deleteChild,
+    deleteChildWithUser,
     submitUnifiedChildForm
   };
 };

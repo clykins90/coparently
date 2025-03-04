@@ -82,12 +82,8 @@ function Login() {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        // Redirect based on user role
-        if (result.isChild) {
-          navigate('/child-dashboard');
-        } else {
-          navigate('/app');
-        }
+        // Redirect based on user role - always go to communication
+        navigate('/app/communication');
       } else {
         setError(result.message || 'Login failed. Please check your credentials.');
       }

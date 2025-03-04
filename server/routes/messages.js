@@ -1,14 +1,45 @@
 const express = require('express');
 const router = express.Router();
-const { Message, User, Conversation } = require('../models');
+const { Message, User, Conversation, ConversationMember } = require('../models');
 const { filterMessage } = require('../utils/messageFilter');
+const { authenticateUser } = require('../middleware/auth');
+
+// New endpoint: Get all conversations for a user
+router.get('/conversations', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.id; // Get the authenticated user's ID
+    
+    // Find all conversations where the user is a member
+    const conversations = await Conversation.findAll({
+      include: [
+        {
+          model: User,
+          through: { attributes: [] }, // Don't include join table attributes
+          where: { id: userId }
+        },
+        {
+          model: User,
+          as: 'members',
+          attributes: ['id', 'first_name', 'last_name', 'email', 'role'],
+          through: { attributes: [] } // Don't include join table attributes
+        }
+      ]
+    });
+    
+    console.log(`Found ${conversations.length} conversations for user ${userId}`);
+    res.json({ success: true, conversations });
+  } catch (err) {
+    console.error('Error fetching conversations:', err);
+    res.status(500).json({ success: false, error: 'Failed to load conversations' });
+  }
+});
 
 // Endpoint: Post a new message in a conversation
 router.post('/conversations/:id/messages', async (req, res) => {
   console.log("New message request:", req.body);
   try {
     const conversationId = req.params.id;
-    const { senderId, content } = req.body;
+    const { senderId, content, bypassAiFilter } = req.body;
     
     // Get recent conversation context (last 5 messages)
     let conversationContext = null;
@@ -32,12 +63,18 @@ router.post('/conversations/:id/messages', async (req, res) => {
       // Continue without context if there's an error
     }
     
-    // Filter/Rewrite the message if necessary
-    const filteredContent = await filterMessage(content, conversationContext);
-    if (filteredContent.status === 'blocked') {
-      console.log("Message blocked:", content);
-      return res.status(400).json({ error: filteredContent.message });
+    // Filter/Rewrite the message if necessary, unless bypassed
+    let filteredContent = content;
+    if (!bypassAiFilter) {
+      filteredContent = await filterMessage(content, conversationContext);
+      if (filteredContent.status === 'blocked') {
+        console.log("Message blocked:", content);
+        return res.status(400).json({ error: filteredContent.message });
+      }
+    } else {
+      console.log("AI filter bypassed for development");
     }
+    
     const message = await Message.create({
       conversation_id: conversationId,
       sender_id: senderId,
@@ -51,7 +88,10 @@ router.post('/conversations/:id/messages', async (req, res) => {
     if (io) {
       const messageWithSender = {
         ...message.toJSON(),
-        sender: { id: senderId }
+        sender: { id: senderId },
+        // Explicitly include timestamp fields to ensure they're available to the client
+        timestamp: message.created_at,
+        createdAt: message.created_at
       };
       io.to(`conversation_${conversationId}`).emit('new_message', messageWithSender);
     }
@@ -73,8 +113,20 @@ router.get('/conversations/:id/messages', async (req, res) => {
       order: [['created_at', 'ASC']],
       include: [{ model: User, as: 'sender', attributes: ['username', 'email'] }]
     });
+    
+    // Map messages to ensure timestamp fields are properly included
+    const formattedMessages = messages.map(msg => {
+      const msgData = msg.toJSON();
+      return {
+        ...msgData,
+        // Explicitly include timestamp fields to ensure they're available to the client
+        timestamp: msg.created_at,
+        createdAt: msg.created_at
+      };
+    });
+    
     console.log(`Returning ${messages.length} messages for conversation ${conversationId}`);
-    res.json({ messages });
+    res.json({ messages: formattedMessages });
   } catch (err) {
     console.error('Error fetching messages:', err);
     res.status(500).json({ error: 'Failed to load messages' });

@@ -27,6 +27,16 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
       comment: 'Color code for the child in the UI'
+    },
+    // Add a reference to a user account if this child has one
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      comment: 'Reference to a user account if this child has one'
     }
   }, {
     tableName: 'children',
@@ -48,6 +58,13 @@ module.exports = (sequelize) => {
       through: 'event_children',
       foreignKey: 'child_id',
       otherKey: 'event_id'
+    });
+    
+    // A child can optionally have a user account
+    Child.belongsTo(models.User, {
+      foreignKey: 'user_id',
+      as: 'userAccount',
+      constraints: false // Make this optional
     });
   };
 

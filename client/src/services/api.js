@@ -48,11 +48,17 @@ async function apiRequest(endpoint, options = {}) {
     // Attempt to parse JSON (if applicable)
     const contentType = response.headers.get('content-type') || '';
     let data;
-    if (contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      // For non-JSON responses, just store as text or something similar
-      data = { success: response.ok };
+    
+    try {
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // For non-JSON responses, just store as text or something similar
+        data = { success: response.ok };
+      }
+    } catch (parseError) {
+      console.error(`[API] Error parsing response: ${parseError.message}`);
+      data = { success: response.ok, error: 'Invalid response format' };
     }
 
     if (!response.ok) {
@@ -60,8 +66,15 @@ async function apiRequest(endpoint, options = {}) {
       throw new Error(data.message || `API request failed with status ${response.status}`);
     }
 
+    // For Google Calendar specific endpoints, format the return data properly
+    if (endpoint.includes('/google-calendar/') && response.ok) {
+      return { success: true, data };
+    }
+
     console.log(`[API] Request successful: ${response.status}`, data);
-    return data;
+    // Return the data directly instead of wrapping it in a new object
+    // This preserves the original structure from the server
+    return { success: true, ...data };
   } catch (error) {
     console.error('[API] Error:', error);
     throw error;
@@ -247,10 +260,10 @@ export const messageAPI = {
   getMessages: (conversationId) =>
     apiRequest(`/api/conversations/${conversationId}/messages`),
 
-  sendMessage: (conversationId, senderId, content) =>
+  sendMessage: (conversationId, senderId, content, bypassAiFilter = false) =>
     apiRequest(`/api/conversations/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ senderId, content })
+      body: JSON.stringify({ senderId, content, bypassAiFilter })
     }),
 
   testFilter: (message, context = null) =>
@@ -284,8 +297,8 @@ export const childUserAPI = {
     }),
 
   // DELETE /api/users/children/:childId
-  deleteChildUser: (childId) =>
-    apiRequest(`/api/users/children/${childId}`, {
+  deleteChildUser: (childId, deleteUser = false) =>
+    apiRequest(`/api/users/children/${childId}${deleteUser ? '?deleteUser=true' : ''}`, {
       method: 'DELETE'
     }),
 
@@ -294,7 +307,205 @@ export const childUserAPI = {
     apiRequest('/api/users/children/invite', {
       method: 'POST',
       body: JSON.stringify(inviteData)
-    })
+    }),
+    
+  // GET /api/users/children/linked-parents
+  getLinkedParents: () =>
+    apiRequest('/api/users/children/linked-parents'),
+    
+  // GET /api/users/children/:childId/linked-parents
+  getLinkedParentsForChild: async (childId) => {
+    try {
+      const result = await apiRequest(`/api/users/children/${childId}/linked-parents`);
+      
+      // Ensure we have a consistent response format
+      if (result.success && result.data) {
+        return {
+          success: true,
+          parents: result.data.parents || []
+        };
+      } else if (result.success) {
+        // Direct response without data wrapper
+        return {
+          success: true,
+          parents: result.parents || []
+        };
+      } else {
+        console.error('Error in getLinkedParentsForChild response:', result);
+        return { success: false, parents: [] };
+      }
+    } catch (error) {
+      console.error('Error in getLinkedParentsForChild:', error);
+      return { success: false, parents: [] };
+    }
+  },
+    
+  // GET /api/users/children/linked-siblings
+  getLinkedSiblings: () =>
+    apiRequest('/api/users/children/linked-siblings')
+};
+
+// Google Calendar API
+export const googleCalendarAPI = {
+  // Get Google Calendar status
+  getStatus: async () => {
+    try {
+      const response = await apiRequest('/api/google-calendar/status');
+      
+      // Ensure we have a valid response
+      if (response && response.data) {
+        return response;
+      } else if (response && Object.keys(response).length > 0) {
+        // This might be a direct response without the success wrapper
+        return { success: true, data: response };
+      } else {
+        console.warn('Invalid response from Google Calendar status API:', response);
+        return {
+          success: false,
+          data: {
+            connected: false,
+            syncEnabled: false,
+            lastUpdated: null,
+            error: 'Invalid response from server'
+          }
+        };
+      }
+    } catch (error) {
+      console.error('Error getting Google Calendar status:', error);
+      // Return a default status object when the API call fails
+      return {
+        success: false,
+        data: {
+          connected: false,
+          syncEnabled: false,
+          lastUpdated: null,
+          error: error.message
+        }
+      };
+    }
+  },
+
+  // Save Google Calendar tokens
+  saveTokens: async (tokens) => {
+    try {
+      const response = await apiRequest('/api/google-calendar/tokens', {
+        method: 'POST',
+        body: JSON.stringify({ tokens })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error saving Google Calendar tokens:', error);
+      throw error;
+    }
+  },
+
+  // Toggle Google Calendar sync
+  toggleSync: async (enabled) => {
+    try {
+      const response = await apiRequest('/api/google-calendar/toggle-sync', {
+        method: 'POST',
+        body: JSON.stringify({ enabled })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error toggling Google Calendar sync:', error);
+      throw error;
+    }
+  },
+
+  // Get Google Calendars
+  getCalendars: async () => {
+    try {
+      const response = await apiRequest('/api/google-calendar/calendars');
+      
+      // Check if response has expected format
+      if (response && response.data && Array.isArray(response.data)) {
+        return response.data;
+      } else if (response && response.data && response.data.calendars && Array.isArray(response.data.calendars)) {
+        // Handle {calendars: Array, count: number} format
+        return response.data.calendars;
+      } else if (response && response.success && response.data) {
+        return response.data;
+      } else if (response && response.calendars && Array.isArray(response.calendars)) {
+        // Direct response with calendars property
+        return response.calendars;
+      } else {
+        // Direct response without wrapper
+        return response || [];
+      }
+    } catch (error) {
+      console.error('Error getting Google Calendars:', error);
+      throw error;
+    }
+  },
+
+  // Save selected Google Calendars
+  saveSelectedCalendars: async (calendars) => {
+    try {
+      const response = await apiRequest('/api/google-calendar/calendars', {
+        method: 'POST',
+        body: JSON.stringify({ calendars })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error saving selected Google Calendars:', error);
+      throw error;
+    }
+  },
+
+  // Save calendar visibility preferences
+  saveCalendarVisibility: async (visibilitySettings) => {
+    try {
+      // First get all calendars to maintain sync settings
+      const allCalendars = await googleCalendarAPI.getCalendars();
+      
+      // Prepare calendars to save, maintaining sync settings but updating display preferences
+      const calendarsToSave = allCalendars
+        .filter(cal => cal.selected === true) // Only include calendars selected for syncing
+        .map(cal => ({
+          google_calendar_id: cal.id,
+          calendar_name: cal.summary || cal.name || "",
+          color: visibilitySettings.colors && visibilitySettings.colors[cal.id] 
+            ? visibilitySettings.colors[cal.id] 
+            : (cal.backgroundColor || "#4285F4"),
+          display_in_coparently: visibilitySettings.visibility && cal.id in visibilitySettings.visibility 
+            ? visibilitySettings.visibility[cal.id] 
+            : true
+        }));
+      
+      // Save using the existing endpoint
+      return await googleCalendarAPI.saveSelectedCalendars(calendarsToSave);
+    } catch (error) {
+      console.error('Error saving calendar visibility preferences:', error);
+      throw error;
+    }
+  },
+
+  // Disconnect Google Calendar
+  disconnect: async () => {
+    try {
+      const response = await apiRequest('/api/google-calendar/disconnect', {
+        method: 'DELETE'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error disconnecting Google Calendar:', error);
+      throw error;
+    }
+  },
+
+  // Manually sync all events to Google Calendar
+  syncAll: async () => {
+    try {
+      const response = await apiRequest('/api/google-calendar/sync-all', {
+        method: 'POST'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error syncing all events to Google Calendar:', error);
+      throw error;
+    }
+  }
 };
 
 export default {
@@ -302,5 +513,6 @@ export default {
   user: userAPI,
   partner: partnerAPI,
   message: messageAPI,
-  childUser: childUserAPI
+  childUser: childUserAPI,
+  googleCalendar: googleCalendarAPI
 };

@@ -27,7 +27,7 @@ const ChildProfileForm = ({
     email: '',
     password: '',
     confirmPassword: '',
-    relationship: 'child'
+    relationship: 'mother'
   });
 
   // On mount or when editingChild changes, load data into form
@@ -47,7 +47,7 @@ const ChildProfileForm = ({
         email: editingChild.userAccount?.email || '',
         password: '', // never show the actual password
         confirmPassword: '',
-        relationship: editingChild.userAccount?.relationship || 'child'
+        relationship: editingChild.userAccount?.relationship || 'mother'
       }));
     } else {
       // brand new child
@@ -61,7 +61,7 @@ const ChildProfileForm = ({
         email: '',
         password: '',
         confirmPassword: '',
-        relationship: 'child'
+        relationship: 'mother'
       });
     }
   }, [editingChild]);
@@ -237,16 +237,17 @@ const ChildProfileForm = ({
                 </>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Your Relationship to Child</label>
                 <select
                   name="relationship"
                   value={formData.relationship}
                   onChange={handleChange}
                   className="w-full p-2 border border-gray-300 rounded-md"
                 >
-                  <option value="child">Child</option>
-                  <option value="stepchild">Stepchild</option>
-                  <option value="other">Other</option>
+                  <option value="mother">Mom</option>
+                  <option value="father">Dad</option>
+                  <option value="stepmother">Stepmom</option>
+                  <option value="stepfather">Stepdad</option>
                 </select>
               </div>
             </div>

@@ -93,8 +93,8 @@ function CustodyScheduleModal({ children, onClose, onCreate }) {
   };
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col my-8">
         <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4">
           <h3 className="text-xl font-semibold text-gray-800 flex items-center">
             <FaCalendarAlt className="mr-2 text-primary" /> Create Custody Schedule
@@ -108,7 +108,7 @@ function CustodyScheduleModal({ children, onClose, onCreate }) {
         </div>
         
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
-          <div className="flex-grow overflow-y-auto p-6 space-y-4">
+          <div className="flex-grow overflow-y-auto p-6 space-y-4 max-h-[60vh]">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                 Schedule Name *

@@ -8,64 +8,90 @@ const jwt = require('jsonwebtoken');
 // Endpoint: Login
 router.post('/login', async (req, res) => {
   try {
+    console.log('[LOGIN] Request received:', req.body ? { hasEmail: !!req.body.email } : 'no body');
+    
     const { email, password } = req.body;
+    
+    if (!email || !password) {
+      console.log('[LOGIN] Missing required fields');
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
+    }
+    
     const user = await User.findOne({ where: { email } });
     
-    // Check if user exists and password matches
-    if (user && await bcrypt.compare(password, user.hashed_password)) {
-      // Different handling based on user role
-      let hasPartner = false;
-      
-      if (user.role === 'parent') {
-        // For parent users, check for linked partner conversation
-        const partnerConversation = await Conversation.findOne({
-          where: { conversation_type: 'linked_partner' },
-          include: [{
-            model: User,
-            through: { attributes: [] },
-            where: { id: user.id }
-          }]
-        });
-        hasPartner = !!partnerConversation;
-      } else if (user.role === 'child') {
-        // For child users, check for parent links
-        const parentLinks = await ChildParentLink.findAll({
-          where: { child_user_id: user.id, status: 'active' }
-        });
-        // Child users don't have partners, so hasPartner remains false
-      }
-      
-      const isProfileComplete = 
-        user.first_name && 
-        user.last_name && 
-        user.email;
-      
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '24h' }
-      );
-      
-      res.json({ 
-        success: true, 
-        userId: user.id,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        phone: user.phone,
-        hasPartner: hasPartner,
-        requiresProfile: !isProfileComplete,
-        authProvider: user.auth_provider,
-        profilePicture: user.google_profile_picture,
-        role: user.role,
-        token: token // Add JWT token to response
-      });
-    } else {
-      res.status(401).json({ success: false, message: "Invalid credentials" });
+    if (!user) {
+      console.log(`[LOGIN] User not found for email: ${email}`);
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
+    
+    // Check if user exists and password matches
+    const passwordMatch = await bcrypt.compare(password, user.hashed_password);
+    if (!passwordMatch) {
+      console.log(`[LOGIN] Password match failed for user: ${user.id}`);
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+    
+    console.log(`[LOGIN] Successful authentication for user: ${user.id}`);
+    
+    // Different handling based on user role
+    let hasPartner = false;
+    
+    if (user.role === 'parent') {
+      // For parent users, check for linked partner conversation
+      const partnerConversation = await Conversation.findOne({
+        where: { conversation_type: 'linked_partner' },
+        include: [{
+          model: User,
+          through: { attributes: [] },
+          where: { id: user.id }
+        }]
+      });
+      hasPartner = !!partnerConversation;
+    } else if (user.role === 'child') {
+      // For child users, check for parent links
+      const parentLinks = await ChildParentLink.findAll({
+        where: { child_user_id: user.id, status: 'active' }
+      });
+      // Child users don't have partners, so hasPartner remains false
+    }
+    
+    const isProfileComplete = 
+      user.first_name && 
+      user.last_name && 
+      user.email;
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET || 'your_jwt_secret_key',
+      { expiresIn: '24h' }
+    );
+    
+    res.json({ 
+      success: true, 
+      userId: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      hasPartner: hasPartner,
+      requiresProfile: !isProfileComplete,
+      authProvider: user.auth_provider,
+      profilePicture: user.google_profile_picture,
+      role: user.role,
+      token: token // Add JWT token to response
+    });
   } catch (err) {
     console.error('Error in /api/login:', err);
+    // Provide more specific error messages for common issues
+    if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
+      console.log('[LOGIN] Database validation error:', err.message);
+      return res.status(400).json({ success: false, message: 'Invalid data format' });
+    }
+    
+    // Log the error type and message for debugging
+    console.log('[LOGIN] Error type:', err.name, 'Message:', err.message);
+    
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
@@ -195,21 +221,39 @@ router.post('/logout', (req, res) => {
 // Endpoint: Check authentication status
 router.get('/check', async (req, res) => {
   try {
+    console.log('[CHECK] Authentication check request received');
     let user;
 
     // First, try JWT if provided
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
-      user = await User.findByPk(decoded.userId);
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
+        console.log('[CHECK] JWT token verified, decoded:', decoded);
+        
+        if (!decoded.userId) {
+          console.log('[CHECK] No userId found in JWT token');
+          return res.json({ authenticated: false });
+        }
+        
+        user = await User.findByPk(decoded.userId);
+        console.log('[CHECK] User found from JWT:', user ? `ID: ${user.id}` : 'null');
+      } catch (error) {
+        console.error('[CHECK] JWT verification error:', error.message);
+        return res.json({ authenticated: false });
+      }
     }
     // Fallback to Passport.js session if no valid JWT
     else if (req.isAuthenticated()) {
       user = req.user;
+      console.log('[CHECK] User found from session:', user ? `ID: ${user.id}` : 'null');
+    } else {
+      console.log('[CHECK] No authentication method found (no JWT, no session)');
     }
 
     if (!user) {
+      console.log('[CHECK] No user found, returning unauthenticated');
       return res.json({ authenticated: false });
     }
 
@@ -256,251 +300,48 @@ router.get('/check', async (req, res) => {
     res.json({ authenticated: false });
   }
 });
-// Google OAuth routes
-router.get('/google', (req, res, next) => {
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
-});
 
-router.get('/google/callback', 
-  (req, res, next) => {
-    // Use the client URL from environment variables
-    const clientUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://your-production-domain.com' 
-      : process.env.CLIENT_URL || 'http://localhost:3000';
-    
-    console.log(`[Google OAuth] Starting authentication with passport, clientUrl: ${clientUrl}`);
-      
-    passport.authenticate('google', { 
-      failureRedirect: `${clientUrl}/login?error=auth_failed`,
-      failWithError: true
-    })(req, res, next);
-  },
-  async (req, res, next) => {
-    try {
-      // User is authenticated and available in req.user
-      const user = req.user;
-      
-      console.log(`[Google OAuth] Authentication completed, user:`, 
-        user ? { id: user.id, email: user.email, role: user.role } : 'null');
-      
-      if (!user) {
-        console.error('[Google OAuth] No user data available after authentication');
-        // Use the client URL from environment variables
-        const clientUrl = process.env.NODE_ENV === 'production' 
-          ? 'https://your-production-domain.com' 
-          : process.env.CLIENT_URL || 'http://localhost:3000';
-        return res.redirect(`${clientUrl}/login?error=no_user_data`);
-      }
-      
-      // Check for linked partner conversation (if exists)
-      const partnerConversation = await Conversation.findOne({
-        where: { conversation_type: 'linked_partner' },
-        include: [{
-          model: User,
-          through: { attributes: [] },
-          where: { id: user.id }
-        }]
-      });
-      const hasPartner = !!partnerConversation;
-      
-      console.log(`[Google OAuth] User ${user.id} has partner: ${hasPartner}`);
-      
-      const isProfileComplete = 
-        user.first_name && 
-        user.last_name && 
-        user.email;
-      
-      console.log(`[Google OAuth] User ${user.id} profile complete: ${isProfileComplete}`);
-      
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id },
-        process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '24h' }
-      );
-      
-      console.log(`[Google OAuth] Generated JWT token for user ${user.id}`);
-      
-      // Redirect to frontend with user info
-      const userInfo = {
-        userId: user.id,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        phone: user.phone,
-        hasPartner: hasPartner,
-        requiresProfile: !isProfileComplete,
-        authProvider: user.auth_provider,
-        profilePicture: user.google_profile_picture,
-        role: user.role, // Make sure role is included
-        token: token // Add JWT token to response
-      };
-      
-      console.log(`[Google OAuth] Prepared user info for redirect:`, 
-        { ...userInfo, token: token ? 'present' : 'missing' });
-      
-      // Use the client URL from environment variables
-      const clientUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://your-production-domain.com' 
-        : process.env.CLIENT_URL || 'http://localhost:3000';
-      
-      const redirectUrl = `${clientUrl}/auth-success?data=${encodeURIComponent(JSON.stringify(userInfo))}`;
-      
-      console.log(`[Google OAuth] Redirecting to: ${redirectUrl.substring(0, 100)}...`);
-      
-      // Redirect to frontend with token or session
-      res.redirect(redirectUrl);
-    } catch (error) {
-      console.error('[Google OAuth] Error in callback:', error);
-      // Use the client URL from environment variables
-      const clientUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://your-production-domain.com' 
-        : process.env.CLIENT_URL || 'http://localhost:3000';
-      res.redirect(`${clientUrl}/login?error=server_error`);
-    }
-  },
-  // Error handler for authentication failures
-  (err, req, res, next) => {
-    console.error('[Google OAuth] Authentication error:', err);
-    // Use the client URL from environment variables
-    const clientUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://your-production-domain.com' 
-      : process.env.CLIENT_URL || 'http://localhost:3000';
-    res.redirect(`${clientUrl}/login?error=auth_failed`);
-  }
-);
+// Google OAuth routes for authentication only (no calendar access)
+router.get('/google', passport.authenticate('google', { 
+  scope: ['profile', 'email'] 
+}));
 
-// Verify child invitation token
-router.get('/verify-child-invitation', async (req, res) => {
-  try {
-    const { token } = req.query;
-    
-    if (!token) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invitation token is required' 
-      });
+router.get('/google/callback', (req, res, next) => {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  
+  passport.authenticate('google', { 
+    failureRedirect: `${clientUrl}/login`,
+    session: false
+  }, (err, user, info) => {
+    if (err) {
+      console.error('Error in Google OAuth callback:', err);
+      return res.redirect(`${clientUrl}/login?error=server_error`);
     }
     
-    // Since invitation_token column doesn't exist in the database,
-    // we need to handle this differently
-    return res.status(404).json({ 
-      success: false, 
-      message: 'Child invitation feature is not available in this version' 
-    });
-  } catch (err) {
-    console.error('Error verifying child invitation:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
-// Complete child signup
-router.post('/complete-child-signup', async (req, res) => {
-  try {
-    const { token, password } = req.body;
-    
-    if (!token || !password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Token and password are required' 
-      });
+    if (!user) {
+      console.error('No user returned from Google OAuth');
+      return res.redirect(`${clientUrl}/login?error=auth_failed`);
     }
     
-    // Since invitation_token column doesn't exist in the database,
-    // we need to handle this differently
-    return res.status(404).json({ 
-      success: false, 
-      message: 'Child invitation feature is not available in this version' 
-    });
-  } catch (err) {
-    console.error('Error completing child signup:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
+    // Prepare user info to pass to the client
+    const userInfo = {
+      userId: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      hasPartner: false, // This would be set based on your business logic
+      requiresProfile: !(user.first_name && user.last_name && user.email),
+      authProvider: user.auth_provider,
+      profilePicture: user.google_profile_picture,
+      role: user.role || 'parent',
+      token: info.token
+    };
+    
+    // Redirect to client with user data
+    const redirectUrl = `${clientUrl}/google-auth-callback?data=${encodeURIComponent(JSON.stringify(userInfo))}`;
+    res.redirect(redirectUrl);
+  })(req, res, next);
 });
 
-// Test endpoint to check Google OAuth configuration
-router.get('/test-google-config', (req, res) => {
-  const configStatus = {
-    clientIdExists: !!process.env.GOOGLE_CLIENT_ID,
-    clientIdValue: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 10)}...` : 'Not set',
-    clientSecretExists: !!process.env.GOOGLE_CLIENT_SECRET,
-    callbackUrlExists: !!process.env.GOOGLE_CALLBACK_URL,
-    callbackUrlValue: process.env.GOOGLE_CALLBACK_URL || 'Using default: /auth/google/callback',
-    sessionSecretExists: !!process.env.SESSION_SECRET,
-    jwtSecretExists: !!process.env.JWT_SECRET,
-    clientUrlExists: !!process.env.CLIENT_URL,
-    clientUrlValue: process.env.CLIENT_URL || 'Using default: http://localhost:3000',
-    nodeEnv: process.env.NODE_ENV || 'development'
-  };
-  
-  let isConfigValid = true;
-  const configErrors = [];
-  
-  if (!configStatus.clientIdExists) {
-    isConfigValid = false;
-    configErrors.push('GOOGLE_CLIENT_ID is not set');
-  }
-  
-  if (!configStatus.clientSecretExists) {
-    isConfigValid = false;
-    configErrors.push('GOOGLE_CLIENT_SECRET is not set');
-  }
-  
-  if (!configStatus.sessionSecretExists) {
-    isConfigValid = false;
-    configErrors.push('SESSION_SECRET is not set');
-  }
-  
-  if (!configStatus.jwtSecretExists) {
-    isConfigValid = false;
-    configErrors.push('JWT_SECRET is not set');
-  }
-  
-  if (!configStatus.clientUrlExists) {
-    configErrors.push('CLIENT_URL is not set (using default)');
-  }
-  
-  res.json({
-    isConfigValid,
-    configStatus,
-    configErrors,
-    message: isConfigValid ? 'Google OAuth configuration appears valid' : 'Google OAuth configuration has issues'
-  });
-});
-
-// Debug route: Force clear session (for troubleshooting)
-router.get('/force-clear-session', (req, res) => {
-  console.log('[DEBUG] Force clearing session');
-  
-  // If there's a passport logout function, use it
-  if (req.logout) {
-    req.logout(function(err) {
-      if (err) {
-        console.error('[DEBUG] Error during passport logout:', err);
-      }
-      console.log('[DEBUG] Passport logout completed');
-    });
-  }
-  
-  // Destroy the session
-  if (req.session) {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error('[DEBUG] Error destroying session:', err);
-      } else {
-        console.log('[DEBUG] Session destroyed successfully');
-      }
-    });
-  }
-  
-  // Clear cookies
-  res.clearCookie('connect.sid');
-  
-  // Return success for client to clear its own state
-  res.json({
-    success: true,
-    message: 'Session forcibly cleared. You should clear browser storage and cookies manually.'
-  });
-});
-
-module.exports = router; 
+module.exports = router;

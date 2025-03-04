@@ -10,9 +10,22 @@ const { User } = require('../models');
  */
 const authenticateUser = async (req, res, next) => {
   try {
+    // Special debug logging for Google Calendar routes
+    if (req.originalUrl && req.originalUrl.includes('/google-calendar')) {
+      console.log('=== AUTH MIDDLEWARE FOR GOOGLE CALENDAR ===');
+      console.log('Request path:', req.originalUrl);
+      console.log('Auth header present:', !!req.headers.authorization);
+      console.log('=== END AUTH MIDDLEWARE LOGGING ===');
+    }
+    
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // More detailed logging for Google Calendar routes
+      if (req.originalUrl && req.originalUrl.includes('/google-calendar')) {
+        console.log('AUTH FAILED: No valid authorization header for Google Calendar route');
+        console.log('Headers:', JSON.stringify(req.headers, null, 2));
+      }
       return res.status(401).json({ message: 'Authentication required. No token provided.' });
     }
 

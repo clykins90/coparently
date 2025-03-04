@@ -59,6 +59,36 @@ export function AuthProvider({ children }) {
         return { success: true, isChild: userData.role === 'child' };
       }
       
+      // Handle case where email is an object (happens during Google Auth callback)
+      if (email && typeof email === 'object' && email.token) {
+        console.log('[AuthContext] Detected object passed instead of email/password');
+        // We're being passed an authData object directly
+        const authData = email;
+        
+        if (!authData.token) {
+          return { success: false, message: 'Authentication failed: No token provided' };
+        }
+        
+        const userData = {
+          id: authData.userId,
+          firstName: authData.firstName,
+          lastName: authData.lastName,
+          email: authData.email,
+          phone: authData.phone,
+          hasPartner: authData.hasPartner,
+          requiresProfile: authData.requiresProfile,
+          authProvider: authData.authProvider,
+          profilePicture: authData.profilePicture,
+          role: authData.role || 'parent'
+        };
+        
+        localStorage.setItem('token', authData.token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        
+        return { success: true, isChild: userData.role === 'child' };
+      }
+      
       // Regular email/password login
       const data = await authAPI.login({ email, password });
       if (data.success) {
@@ -221,6 +251,48 @@ export function AuthProvider({ children }) {
     return user && user.role === 'child';
   };
 
+  // Refresh token function
+  const refreshToken = async () => {
+    try {
+      console.log('[AuthContext] Attempting to refresh authentication token');
+      
+      // Call the auth check endpoint which should return a token if session is valid
+      const authCheck = await authAPI.checkAuth();
+      
+      if (authCheck.authenticated && authCheck.token) {
+        console.log('[AuthContext] Successfully refreshed token');
+        localStorage.setItem('token', authCheck.token);
+        
+        // If user data is also returned, update that too
+        if (authCheck.userData) {
+          const userData = {
+            id: authCheck.userData.userId || authCheck.userData.id,
+            firstName: authCheck.userData.firstName,
+            lastName: authCheck.userData.lastName,
+            email: authCheck.userData.email,
+            phone: authCheck.userData.phone,
+            hasPartner: authCheck.userData.hasPartner,
+            requiresProfile: authCheck.userData.requiresProfile,
+            authProvider: authCheck.userData.authProvider,
+            profilePicture: authCheck.userData.profilePicture,
+            role: authCheck.userData.role || 'parent'
+          };
+          
+          localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
+        }
+        
+        return { success: true };
+      } else {
+        console.warn('[AuthContext] Failed to refresh token');
+        return { success: false, message: 'Failed to refresh authentication' };
+      }
+    } catch (error) {
+      console.error('[AuthContext] Token refresh error:', error);
+      return { success: false, message: 'An error occurred during token refresh' };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -231,7 +303,8 @@ export function AuthProvider({ children }) {
     updateProfilePicture,
     removeProfilePicture,
     isGoogleAuthenticated,
-    isChild
+    isChild,
+    refreshToken
   };
 
   return (

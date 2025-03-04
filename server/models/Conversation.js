@@ -10,7 +10,7 @@ module.exports = (sequelize) => {
       },
       // We enforce allowed values with ENUM or CHECK constraint later
       conversation_type: {
-        type: DataTypes.ENUM('linked_partner', 'standard'),
+        type: DataTypes.ENUM('linked_partner', 'linked_child'),
         allowNull: false
       }
     }, {
@@ -27,6 +27,15 @@ module.exports = (sequelize) => {
         foreignKey: 'conversation_id',
         otherKey: 'user_id'
       });
+      
+      // Add an alias for members
+      Conversation.belongsToMany(models.User, {
+        through: models.ConversationMember,
+        foreignKey: 'conversation_id',
+        otherKey: 'user_id',
+        as: 'members'
+      });
+      
       // A conversation has many messages
       Conversation.hasMany(models.Message, { foreignKey: 'conversation_id' });
     };

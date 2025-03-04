@@ -10,6 +10,8 @@ export default function useChildUsers() {
   const [childUsers, setChildUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [fetchAttempted, setFetchAttempted] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
 
   // For leftover old forms, though we don't show them, we still keep these to avoid breakage
   const [inviteFormData, setInviteFormData] = useState({});
@@ -26,16 +28,42 @@ export default function useChildUsers() {
 
   // Fetch all child-user accounts
   async function fetchChildUsers() {
+    // Don't attempt to fetch again if we're already loading
+    if (isLoading) {
+      return;
+    }
+    
     setIsLoading(true);
+    setFetchError(null);
+    
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('/api/users/children', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
       });
       setChildUsers(response.data.children);
+      setFetchAttempted(true);
     } catch (error) {
       console.error('Error fetching child users:', error);
-      showNotification('Error', 'An error occurred while fetching child users', 'error');
+      setFetchError(error);
+      
+      let errorMessage = 'An error occurred while fetching child users';
+      if (error.response) {
+        errorMessage = error.response.data.message || `Server error: ${error.response.status}`;
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please try again later.';
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
+      showNotification('Error', errorMessage, 'error');
+      
+      // If we've never successfully fetched data, set an empty array
+      if (!fetchAttempted) {
+        setChildUsers([]);
+      }
+      // Otherwise keep the previous data
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +98,8 @@ export default function useChildUsers() {
           relationship: formData.relationship
         };
         await axios.post('/api/users/children', createPayload, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000
         });
         showNotification('Success', 'Child user account created successfully', 'success');
       } else {
@@ -92,17 +121,15 @@ export default function useChildUsers() {
   }
 
   // Delete a child user link
-  async function deleteChildUser(userId) {
-    if (!window.confirm('Are you sure you want to remove the child user link?')) {
-      return { success: false, canceled: true };
-    }
+  async function deleteChildUser(userId, deleteUser = false) {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/users/children/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      await axios.delete(`/api/users/children/${userId}${deleteUser ? '?deleteUser=true' : ''}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
       });
-      showNotification('Success', 'Child user link removed successfully', 'success');
+      showNotification('Success', deleteUser ? 'Child user account removed successfully' : 'Child user link removed successfully', 'success');
       await fetchChildUsers();
       return { success: true };
     } catch (error) {
@@ -128,6 +155,8 @@ export default function useChildUsers() {
     childUsers,
     isLoading,
     notification,
+    fetchError,
+    fetchAttempted,
     fetchChildUsers,
     deleteChildUser,
 

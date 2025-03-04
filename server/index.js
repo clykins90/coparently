@@ -57,7 +57,7 @@ app.use(cors({
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your_session_secret_key',
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true,
   cookie: {
     secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
@@ -70,19 +70,30 @@ app.use(passport.session());
 
 // Use route modules
 app.use('/api', authRoutes);
-app.use('/auth', authRoutes); // For Google OAuth routes
+app.use('/auth', authRoutes); // For Google OAuth login routes
 app.use('/api', userRoutes);
 app.use('/api', partnerRoutes);
 app.use('/api', messageRoutes);
 app.use('/api/calendar', calendarRoutes);
-app.use('/api/children', childrenRoutes); // Mount children routes
-
-// ---------------------------
-// Mount your child-user routes
-// ---------------------------
-// This means that inside "usersChildren.js",
-// if we have router.get('/'), it becomes /api/users/children/
+app.use('/api/children', childrenRoutes);
 app.use('/api/users/children', usersChildrenRoutes);
+
+// Import the Google Calendar routes
+const { router: googleCalendarRoutes, handleGoogleCalendarCallback } = require('./routes/googleCalendarRoutes');
+app.use('/api/google-calendar', googleCalendarRoutes);
+
+// Handle Google OAuth callbacks
+app.get('/auth/google/callback', (req, res, next) => {
+  // This is specifically for the Google login flow
+  console.log('[Server] Google Authentication callback received');
+  next();
+}, authRoutes);
+
+// Handle Google Calendar OAuth callbacks
+app.get('/auth/google-calendar/callback', (req, res, next) => {
+  console.log('[Server] Google Calendar callback received');
+  handleGoogleCalendarCallback(req, res, next);
+});
 
 // Test route to confirm server is up
 app.get('/test', (req, res) => {
@@ -120,6 +131,7 @@ sequelize.sync().then(() => {
   server.listen(port, () => {
     console.log(`\n=== SERVER STARTED ===`);
     console.log(`| Port: ${port}`);
+    console.log(`Google Calendar callback URL: ${process.env.GOOGLE_CALENDAR_CALLBACK_URL}`);
     console.log(`==========================\n`);
   });
 }).catch(err => {

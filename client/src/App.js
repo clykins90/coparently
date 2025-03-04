@@ -6,11 +6,12 @@ import AddPartner from './components/AddPartner';
 import LinkExistingPartner from './components/LinkExistingPartner';
 import InvitePartner from './components/InvitePartner';
 import MainApp from './components/MainApp';
-import ChildDashboard from './components/ChildDashboard';
 import Register from './components/Register';
 import ProfileUpdate from './components/ProfileUpdate';
 import LogoutConfirmation from './components/LogoutConfirmation';
 import AuthSuccess from './components/AuthSuccess';
+import GoogleAuthCallback from './components/GoogleAuthCallback';
+import CalendarConnectCallback from './components/CalendarConnectCallback';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import './styles.css';
@@ -58,24 +59,33 @@ function AppContent() {
         <Route path="/profile" element={<ProfileUpdate />} />
         <Route path="/logout" element={<LogoutConfirmation />} />
         <Route path="/auth-success" element={<AuthSuccess />} />
+        <Route path="/google-auth-callback" element={<GoogleAuthCallback />} />
+        <Route path="/calendar-connect-callback" element={<CalendarConnectCallback />} />
         <Route path="/child-signup" element={<ChildSignup />} />
         <Route path="/auth-debug" element={<AuthDebug />} />
+        
         <Route 
           path="/child-dashboard" 
           element={
+            user ? <Navigate to="/app" /> : <Navigate to="/login" />
+          } 
+        />
+        
+        <Route 
+          path="/app"
+          element={
             user ? (
-              isChild ? (
-                <div className="child-dashboard">
-                  <ChildDashboard />
-                </div>
+              requiresProfile ? (
+                <Navigate to="/profile" replace state={{ requiresProfile: true }} />
               ) : (
-                <Navigate to="/app" />
+                <Navigate to="/app/communication" replace />
               )
             ) : (
               <Navigate to="/login" />
             )
           } 
         />
+        
         <Route 
           path="/app/*" 
           element={
@@ -83,19 +93,16 @@ function AppContent() {
               requiresProfile ? (
                 <Navigate to="/profile" replace state={{ requiresProfile: true }} />
               ) : (
-                isChild ? (
-                  <Navigate to="/child-dashboard" />
-                ) : (
-                  <div className="main-app">
-                    <MainApp />
-                  </div>
-                )
+                <div className="main-app">
+                  <MainApp />
+                </div>
               )
             ) : (
               <Navigate to="/login" />
             )
           } 
         />
+        
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </div>

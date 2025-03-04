@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Child, User } = require('../models');
+const { Child, User, ChildUser, ChildParentLink } = require('../models');
 const { authenticateUser } = require('../middleware/auth');
 
 // Apply authentication middleware to all routes
@@ -199,6 +199,81 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Child deleted successfully' });
   } catch (error) {
     console.error('Error deleting child:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete a child with option to delete user account
+router.delete('/:id/with-user', async (req, res) => {
+  try {
+    const parentId = req.user.id;
+    const { id } = req.params;
+    const { deleteUserAccount } = req.query;
+    
+    // Find the child with its associated user account
+    const child = await Child.findByPk(id, {
+      include: [
+        {
+          model: User,
+          through: { attributes: [] },
+          attributes: ['id']
+        },
+        {
+          model: User,
+          as: 'userAccount',
+          attributes: ['id', 'role']
+        }
+      ]
+    });
+    
+    // Check if child exists
+    if (!child) {
+      return res.status(404).json({ message: 'Child not found' });
+    }
+    
+    // Check if user is associated with the child
+    const isParent = child.Users.some(user => user.id === parentId);
+    if (!isParent) {
+      return res.status(403).json({ message: 'Not authorized to delete this child' });
+    }
+    
+    // If deleteUserAccount is true and child has a user account, delete the user account
+    if (deleteUserAccount === 'true' && child.userAccount) {
+      const childUserId = child.userAccount.id;
+      
+      // Only proceed if the user account is a child role
+      if (child.userAccount.role === 'child') {
+        // Find the link between parent and child user
+        const link = await ChildParentLink.findOne({
+          where: { parent_user_id: parentId, child_user_id: childUserId }
+        });
+        
+        if (link) {
+          // Delete the link
+          await link.destroy();
+        }
+        
+        // Check if this is the only parent linked to this child user
+        const otherLinks = await ChildParentLink.findAll({
+          where: { child_user_id: childUserId }
+        });
+        
+        // If no other parents are linked, we can delete the user account
+        if (otherLinks.length === 0) {
+          const childUser = await User.findByPk(childUserId);
+          if (childUser) {
+            await childUser.destroy();
+          }
+        }
+      }
+    }
+    
+    // Delete the child profile
+    await child.destroy();
+    
+    res.json({ message: 'Child deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting child with user account:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

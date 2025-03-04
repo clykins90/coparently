@@ -9,13 +9,16 @@ import childrenService from '../services/childrenService';
 import EventModal from './calendar/EventModal';
 import CustodyScheduleModal from './calendar/CustodyScheduleModal';
 import ChildrenList from './calendar/ChildrenList';
+import CalendarVisibilitySelector from './calendar/CalendarVisibilitySelector';
 import { format } from 'date-fns';
-import { FaCalendarPlus, FaCalendarAlt, FaSpinner } from 'react-icons/fa';
+import { FaCalendarPlus, FaCalendarAlt, FaSpinner, FaSync, FaGoogle } from 'react-icons/fa';
+import { googleCalendarAPI } from '../services/api';
 
 function Calendar() {
   const { user } = useAuth();
   const calendarRef = useRef(null);
   const [events, setEvents] = useState([]);
+  const [filteredEvents, setFilteredEvents] = useState([]);
   const [custodySchedules, setCustodySchedules] = useState([]);
   const [children, setChildren] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -26,6 +29,13 @@ function Calendar() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
+  const [syncingGoogleCalendar, setSyncingGoogleCalendar] = useState(false);
+  const [googleCalendarStatus, setGoogleCalendarStatus] = useState({
+    connected: false,
+    syncEnabled: false
+  });
+  const [visibleCalendars, setVisibleCalendars] = useState({});
+  const [calendarColors, setCalendarColors] = useState({});
 
   // Fetch events, custody schedules, and children when component mounts
   useEffect(() => {
@@ -45,7 +55,36 @@ function Calendar() {
         
         // Fetch events for the current month
         const fetchedEvents = await calendarService.getEvents(startStr, endStr);
-        setEvents(fetchedEvents);
+        console.log('Fetched events:', fetchedEvents);
+        
+        // Format events for FullCalendar
+        const formattedEvents = fetchedEvents.map(event => {
+          // Check if this is a Google Calendar event
+          const isGoogleEvent = event.id && event.id.toString().startsWith('google_');
+          
+          return {
+            id: event.id,
+            title: event.title,
+            start: event.start_time || event.start,
+            end: event.end_time || event.end,
+            allDay: event.is_all_day,
+            description: event.description,
+            location: event.location,
+            extendedProps: {
+              isGoogleEvent: isGoogleEvent,
+              googleCalendarId: event.googleCalendarId,
+              googleCalendarName: event.googleCalendarName,
+              googleEventId: event.googleEventId,
+              responsibleParentId: event.responsible_parent_id,
+              createdById: event.created_by_id,
+              children: event.children
+            },
+            backgroundColor: event.color || (isGoogleEvent ? '#4285F4' : '#1976D2')
+          };
+        });
+        
+        setEvents(formattedEvents);
+        setFilteredEvents(formattedEvents); // Initially show all events
         
         // Fetch custody schedules
         const fetchedSchedules = await calendarService.getCustodySchedules();
@@ -66,11 +105,98 @@ function Calendar() {
     fetchData();
   }, []);
 
+  // Fetch Google Calendar status
+  useEffect(() => {
+    const fetchGoogleCalendarStatus = async () => {
+      try {
+        const response = await googleCalendarAPI.getStatus();
+        const statusData = response.data || response;
+        
+        if (statusData && typeof statusData === 'object') {
+          setGoogleCalendarStatus({
+            connected: !!statusData.connected,
+            syncEnabled: !!statusData.syncEnabled,
+            lastUpdated: statusData.lastUpdated || null
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching Google Calendar status:', err);
+      }
+    };
+    
+    fetchGoogleCalendarStatus();
+  }, []);
+
+  // Filter events based on visible calendars
+  useEffect(() => {
+    if (Object.keys(visibleCalendars).length === 0) {
+      // If no visibility settings yet, show all events
+      setFilteredEvents(events);
+      return;
+    }
+    
+    const filtered = events.filter(event => {
+      // Always show Coparently events
+      if (!event.extendedProps.isGoogleEvent) {
+        return true;
+      }
+      
+      // For Google Calendar events, check visibility
+      const calendarId = event.extendedProps.googleCalendarId;
+      return calendarId && visibleCalendars[calendarId];
+    });
+    
+    // Apply custom colors to events
+    const coloredEvents = filtered.map(event => {
+      if (event.extendedProps.isGoogleEvent) {
+        const calendarId = event.extendedProps.googleCalendarId;
+        if (calendarId && calendarColors[calendarId]) {
+          return {
+            ...event,
+            backgroundColor: calendarColors[calendarId]
+          };
+        }
+      }
+      return event;
+    });
+    
+    setFilteredEvents(coloredEvents);
+  }, [events, visibleCalendars, calendarColors]);
+
   // Handle date range change
   const handleDatesSet = async ({ startStr, endStr }) => {
     try {
       const fetchedEvents = await calendarService.getEvents(startStr, endStr);
-      setEvents(fetchedEvents);
+      console.log('Fetched events on date change:', fetchedEvents);
+      
+      // Format events for FullCalendar
+      const formattedEvents = fetchedEvents.map(event => {
+        // Check if this is a Google Calendar event
+        const isGoogleEvent = event.id && event.id.toString().startsWith('google_');
+        
+        return {
+          id: event.id,
+          title: event.title,
+          start: event.start_time || event.start,
+          end: event.end_time || event.end,
+          allDay: event.is_all_day,
+          description: event.description,
+          location: event.location,
+          extendedProps: {
+            isGoogleEvent: isGoogleEvent,
+            googleCalendarId: event.googleCalendarId,
+            googleCalendarName: event.googleCalendarName,
+            googleEventId: event.googleEventId,
+            responsibleParentId: event.responsible_parent_id,
+            createdById: event.created_by_id,
+            children: event.children
+          },
+          backgroundColor: event.color || (isGoogleEvent ? '#4285F4' : '#1976D2')
+        };
+      });
+      
+      setEvents(formattedEvents);
+      // Filtered events will be updated by the useEffect
     } catch (err) {
       console.error('Error fetching events for date range:', err);
       setError('Failed to load events for the selected date range.');
@@ -89,9 +215,29 @@ function Calendar() {
   const handleEventClick = async (info) => {
     try {
       const eventId = info.event.id;
-      const event = await calendarService.getEventById(eventId);
+      const isGoogleEvent = info.event.extendedProps.isGoogleEvent;
       
-      setSelectedEvent(event);
+      if (isGoogleEvent) {
+        // For Google Calendar events, use the data already in the calendar
+        setSelectedEvent({
+          id: eventId,
+          title: info.event.title,
+          description: info.event.extendedProps.description || '',
+          start: info.event.start,
+          end: info.event.end,
+          location: info.event.extendedProps.location || '',
+          allDay: info.event.allDay,
+          isGoogleEvent: true,
+          googleCalendarId: info.event.extendedProps.googleCalendarId,
+          googleCalendarName: info.event.extendedProps.googleCalendarName,
+          googleEventId: info.event.extendedProps.googleEventId
+        });
+      } else {
+        // For Coparently events, fetch the full details
+        const event = await calendarService.getEventById(eventId);
+        setSelectedEvent(event);
+      }
+      
       setModalMode('edit');
       setShowEventModal(true);
     } catch (err) {
@@ -171,6 +317,37 @@ function Calendar() {
     }
   };
 
+  // Handle manual Google Calendar sync
+  const handleSyncGoogleCalendar = async () => {
+    try {
+      setSyncingGoogleCalendar(true);
+      
+      // Trigger a sync on the server
+      await googleCalendarAPI.syncAll();
+      
+      // Refresh events
+      if (calendarRef.current) {
+        const calendarApi = calendarRef.current.getApi();
+        await handleDatesSet({
+          startStr: format(calendarApi.view.activeStart, 'yyyy-MM-dd'),
+          endStr: format(calendarApi.view.activeEnd, 'yyyy-MM-dd')
+        });
+      }
+      
+      setSyncingGoogleCalendar(false);
+    } catch (err) {
+      console.error('Error syncing Google Calendar:', err);
+      setError('Failed to sync Google Calendar. Please try again.');
+      setSyncingGoogleCalendar(false);
+    }
+  };
+
+  // Handle calendar visibility changes
+  const handleCalendarVisibilityChange = (newVisibility, newColors) => {
+    setVisibleCalendars(newVisibility);
+    setCalendarColors(newColors);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -216,8 +393,48 @@ function Calendar() {
           >
             <FaCalendarAlt className="mr-2" /> Manage Custody Schedule
           </button>
+          {googleCalendarStatus.connected && (
+            <button 
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors flex items-center"
+              onClick={handleSyncGoogleCalendar}
+              disabled={syncingGoogleCalendar}
+            >
+              {syncingGoogleCalendar ? (
+                <FaSpinner className="animate-spin mr-2" />
+              ) : (
+                <FaGoogle className="mr-2" />
+              )}
+              {syncingGoogleCalendar ? 'Syncing...' : 'Sync Google Calendar'}
+            </button>
+          )}
         </div>
       </div>
+      
+      {/* Debug section - only visible in development */}
+      {process.env.NODE_ENV === 'development' && events.length > 0 && (
+        <div className="mb-4 p-4 bg-gray-100 rounded-lg">
+          <details>
+            <summary className="font-medium cursor-pointer">Debug: Calendar Events ({events.length})</summary>
+            <div className="mt-2 text-xs overflow-x-auto">
+              <pre>{JSON.stringify(events.slice(0, 3), null, 2)}</pre>
+              {events.length > 3 && <p className="mt-2 text-gray-500">...and {events.length - 3} more events</p>}
+            </div>
+          </details>
+        </div>
+      )}
+      
+      {/* Google Calendar status indicator */}
+      {googleCalendarStatus.connected && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center">
+          <FaGoogle className="text-blue-600 mr-2" />
+          <div className="flex-1">
+            <p className="text-blue-800 text-sm">
+              Google Calendar is {googleCalendarStatus.syncEnabled ? 'synced' : 'connected but sync is disabled'}.
+              {googleCalendarStatus.lastUpdated && ` Last updated: ${new Date(googleCalendarStatus.lastUpdated).toLocaleString()}`}
+            </p>
+          </div>
+        </div>
+      )}
       
       <div className="flex flex-col md:flex-row gap-4">
         <div className="md:w-1/4">
@@ -225,31 +442,14 @@ function Calendar() {
             <ChildrenList children={children} />
           </div>
           
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <h3 className="text-lg font-semibold mb-3 text-gray-800">Event Types</h3>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <span className="w-4 h-4 rounded-full bg-blue-500 mr-2"></span>
-                <span className="text-sm">Custody Transfer</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-4 h-4 rounded-full bg-red-500 mr-2"></span>
-                <span className="text-sm">Appointment</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-4 h-4 rounded-full bg-green-500 mr-2"></span>
-                <span className="text-sm">Activity</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></span>
-                <span className="text-sm">School</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-4 h-4 rounded-full bg-gray-500 mr-2"></span>
-                <span className="text-sm">Other</span>
-              </div>
+          {/* Calendar Visibility Selector - always visible if Google Calendar is connected */}
+          {googleCalendarStatus.connected && (
+            <div className="bg-white rounded-lg shadow-md mb-4">
+              <CalendarVisibilitySelector 
+                onCalendarVisibilityChange={handleCalendarVisibilityChange} 
+              />
             </div>
-          </div>
+          )}
         </div>
         
         <div className="md:w-3/4 bg-white rounded-lg shadow-md p-4">
@@ -262,7 +462,7 @@ function Calendar() {
               center: 'title',
               right: 'dayGridMonth,timeGridWeek,timeGridDay'
             }}
-            events={events}
+            events={filteredEvents}
             datesSet={handleDatesSet}
             dateClick={handleDateClick}
             eventClick={handleEventClick}

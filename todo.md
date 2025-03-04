@@ -39,6 +39,38 @@
 - [x] Add email invitation functionality for child users
 - [x] Create child signup page for completing account setup from email invitations
 
+## Settings Page Children 
+- [x] Linked parents should show the list of all parents actually linked to a child 
+- [x] Linked siblings should show siblings that are linked to the same parents
+
+## Calendar enhancements
+- [x] Remove all event types
+- [x] Fix bug on event creation where I can't see the entire modal and scrolling doesn't work
+- [x] Fix bug on manage custody schedule where I can't see the entire modal and scrolling doesn't work
+- [x] Implement 2-way Google Calendar Sync in settings and allow me to set which calendars sync 
+- [] Implement ability to create events from communications tab (if detected in messages - evaluate whether we need to use an LLM or not)
+- [] Create a visual on the calendar that indicates whether the logged in parent has a child or not based on the custody schedule
+- [] allow creation of custody schedule based on parent plan document that is uploaded (evlauate whether we need to use an LLM or not)
+- [] remove notes from calendar event since description is enough
+
+# bugs
+- [x] parent to parent conversations show up with children
+- [x] duplicated delete buttons on linked children
+- []  double clicking on partner/children shows 'no messages yet. Start a conversation!'
+
+## security and data export
+- [] need to be able to export messages as csv for legal purposes
+- [] need to store unfiltered messages in backend
+- [] need robust history tracking for events
+
+## documents
+- [] dr visit (after visit summaries)
+- [] receipts, bills, expenses
+- [] parent plan, divorce decree
+- [] addl legal docs
+- [] photos 
+
+
 ## Code Refactoring
 - [x] Refactor ChildrenManager component into smaller, more focused components
 - [x] Extract data fetching logic into custom hooks for ChildrenManager

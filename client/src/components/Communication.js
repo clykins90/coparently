@@ -4,7 +4,7 @@ import PartnerRequired from './PartnerRequired';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { partnerAPI, messageAPI } from '../services/api';
-import { FaPaperPlane, FaCircle, FaChild, FaUserFriends } from 'react-icons/fa';
+import { FaPaperPlane, FaCircle, FaChild, FaUserFriends, FaRobot } from 'react-icons/fa';
 
 function Communication() {
   const [message, setMessage] = useState('');
@@ -16,62 +16,58 @@ function Communication() {
   const [activeTab, setActiveTab] = useState('partner'); // 'partner' or 'children'
   const [childConversations, setChildConversations] = useState([]);
   const [selectedChildConversation, setSelectedChildConversation] = useState(null);
+  const [bypassAiFilter, setBypassAiFilter] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { socket, connected, joinConversation, leaveConversation } = useSocket();
   const chatEndRef = useRef(null);
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
+    if (user) {
+      fetchPartnerAndConversation();
+      fetchChildConversations();
     }
+  }, [user, activeTab]);
 
-    // Check if user is a parent
-    if (user.role !== 'parent') {
-      navigate('/child-dashboard');
-      return;
+  // Fetch partner ID and conversation ID from server
+  const fetchPartnerAndConversation = async () => {
+    try {
+      const data = await partnerAPI.getPartner(user.id);
+      setHasPartner(data.success);
+      if (data.success) {
+        setPartnerId(data.partnerId);
+        setConversationId(data.conversationId);
+      }
+    } catch (err) {
+      console.error('Error fetching partner:', err);
     }
-
-    // Fetch partner ID and conversation ID from server
-    const fetchPartnerAndConversation = async () => {
-      try {
-        const data = await partnerAPI.getPartner(user.id);
-        setHasPartner(data.success);
-        if (data.success) {
-          setPartnerId(data.partnerId);
-          setConversationId(data.conversationId);
+  };
+  
+  // Fetch child conversations
+  const fetchChildConversations = async () => {
+    try {
+      const response = await messageAPI.getConversations();
+      if (response.success && response.conversations) {
+        // Filter for parent-child conversations
+        const childConvs = response.conversations.filter(
+          conv => conv.conversation_type === 'linked_child'
+        );
+        setChildConversations(childConvs);
+        
+        // Select the first child conversation by default if there are any
+        if (childConvs.length > 0 && activeTab === 'children') {
+          setSelectedChildConversation(childConvs[0]);
         }
-      } catch (err) {
-        console.error('Error fetching partner:', err);
+      } else {
+        // Handle case where conversations array is missing
+        console.log('No conversations data returned from API:', response);
+        setChildConversations([]);
       }
-    };
-    
-    fetchPartnerAndConversation();
-
-    // Fetch child conversations
-    const fetchChildConversations = async () => {
-      try {
-        const response = await messageAPI.getConversations();
-        if (response.success) {
-          // Filter for parent-child conversations
-          const childConvs = response.conversations.filter(
-            conv => conv.conversation_type === 'parent_child'
-          );
-          setChildConversations(childConvs);
-          
-          // Select the first child conversation by default if there are any
-          if (childConvs.length > 0 && activeTab === 'children') {
-            setSelectedChildConversation(childConvs[0]);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching child conversations:', err);
-      }
-    };
-    
-    fetchChildConversations();
-  }, [user, navigate, activeTab]);
+    } catch (err) {
+      console.error('Error fetching child conversations:', err);
+      setChildConversations([]);
+    }
+  };
 
   // Join conversation room when conversation ID is available
   useEffect(() => {
@@ -95,6 +91,15 @@ function Communication() {
       const fetchMessages = async () => {
         try {
           const data = await messageAPI.getMessages(currentConversationId);
+          console.log('Fetched initial messages:', data.messages);
+          // Log timestamp information for the first message if available
+          if (data.messages && data.messages.length > 0) {
+            console.log('First message timestamp data:', {
+              timestamp: data.messages[0].timestamp,
+              createdAt: data.messages[0].createdAt,
+              created_at: data.messages[0].created_at
+            });
+          }
           setChatHistory(data.messages);
         } catch (err) {
           console.error('Error fetching messages:', err);
@@ -125,6 +130,15 @@ function Communication() {
     if (!socket) return;
     
     const handleNewMessage = (newMessage) => {
+      console.log('Received new message:', newMessage);
+      // Log timestamp information for debugging
+      if (newMessage) {
+        console.log('Message timestamp data:', {
+          timestamp: newMessage.timestamp,
+          createdAt: newMessage.createdAt,
+          created_at: newMessage.created_at
+        });
+      }
       setChatHistory(prevMessages => [...prevMessages, newMessage]);
     };
     
@@ -160,7 +174,12 @@ function Communication() {
     setIsLoading(true);
     
     try {
-      const response = await messageAPI.sendMessage(currentConversationId, user.id, message);
+      const response = await messageAPI.sendMessage(
+        currentConversationId, 
+        user.id, 
+        message,
+        bypassAiFilter
+      );
       
       if (!response.success) {
         alert(response.error || 'Failed to send message');
@@ -179,7 +198,28 @@ function Communication() {
   };
 
   const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (!timestamp) return 'Invalid Date';
+    
+    try {
+      // Try to parse the timestamp in different formats
+      const date = new Date(timestamp);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date format:', timestamp);
+        return 'Invalid Date';
+      }
+      
+      // Format the date
+      return date.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Invalid Date';
+    }
   };
 
   const getChildName = (conversation) => {
@@ -208,7 +248,25 @@ function Communication() {
     <div className="max-w-4xl mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Communication</h2>
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
+          {/* AI Filter Toggle (only visible in development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="flex items-center">
+              <span className="text-sm mr-2">AI Filter:</span>
+              <button
+                onClick={() => setBypassAiFilter(!bypassAiFilter)}
+                className={`flex items-center px-3 py-1 rounded-md text-sm ${
+                  bypassAiFilter 
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                <FaRobot className="mr-1" />
+                {bypassAiFilter ? 'Off' : 'On'}
+              </button>
+            </div>
+          )}
+          
           {connected ? (
             <div className="flex items-center text-green-500">
               <FaCircle className="w-2 h-2 mr-2" />
@@ -224,22 +282,22 @@ function Communication() {
       </div>
       
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-4">
+      <div className="flex mb-4">
         <button
-          className={`flex items-center py-2 px-4 ${
+          className={`inline-flex items-center px-4 py-2 rounded-md transition-colors hover:bg-primary hover:text-white mr-2 ${
             activeTab === 'partner'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-primary-dark text-white'
+              : 'bg-gray-100 text-gray-700'
           }`}
           onClick={() => handleTabChange('partner')}
         >
           <FaUserFriends className="mr-2" /> Partner
         </button>
         <button
-          className={`flex items-center py-2 px-4 ${
+          className={`inline-flex items-center px-4 py-2 rounded-md transition-colors hover:bg-primary hover:text-white ${
             activeTab === 'children'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-primary-dark text-white'
+              : 'bg-gray-100 text-gray-700'
           }`}
           onClick={() => handleTabChange('children')}
         >

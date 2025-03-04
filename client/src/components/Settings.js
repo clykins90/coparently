@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { partnerAPI } from '../services/api';
 import { formatPhoneNumber } from '../utils/validation';
 import ChildrenManager from './ChildrenManager/index';
-import { FaUser, FaUserFriends, FaPhone, FaEnvelope, FaExclamationTriangle, FaChild, FaFileAlt, FaCamera, FaTrash, FaUpload } from 'react-icons/fa';
+import GoogleCalendarSync from './GoogleCalendarSync';
+import { FaUser, FaUserFriends, FaPhone, FaEnvelope, FaExclamationTriangle, FaChild, FaFileAlt, FaCamera, FaTrash, FaUpload, FaCalendarAlt } from 'react-icons/fa';
 import Avatar from './common/Avatar';
 import Button from './common/Button';
 
@@ -36,32 +37,44 @@ function Settings() {
         phone: user.phone || '',
         email: user.email || '' // Read-only
       });
+      
+      const fetchPartner = async () => {
+        try {
+          const data = await partnerAPI.getPartner(user.id);
+          if (data && data.success) {
+            setPartnerData(data.data || data);
+          } else {
+            console.warn('Unexpected response format from partner API:', data);
+            setPartnerData(null);
+          }
+        } catch (err) {
+          console.error('Error fetching partner:', err);
+          setPartnerData(null);
+        }
+      };
+      
+      const fetchOutgoingRequests = async () => {
+        try {
+          const data = await partnerAPI.getOutgoingRequests(user.id);
+          if (data && data.success) {
+            setOutgoingRequests(data.requests || []);
+          } else {
+            console.warn('Unexpected response format from outgoing requests API:', data);
+            setOutgoingRequests([]);
+          }
+        } catch (err) {
+          console.error('Error fetching outgoing requests:', err);
+          setOutgoingRequests([]);
+        }
+      };
+      
+      fetchPartner();
+      fetchOutgoingRequests();
+    } else {
+      // User not available yet, set default values
+      setPartnerData(null);
+      setOutgoingRequests([]);
     }
-
-    const fetchPartner = async () => {
-      try {
-        const data = await partnerAPI.getPartner(user.id);
-        if (data.success) {
-          setPartnerData(data);
-        }
-      } catch (err) {
-        console.error('Error fetching partner:', err);
-      }
-    };
-    
-    const fetchOutgoingRequests = async () => {
-      try {
-        const data = await partnerAPI.getOutgoingRequests(user.id);
-        if (data.success) {
-          setOutgoingRequests(data.requests);
-        }
-      } catch (err) {
-        console.error('Error fetching outgoing requests:', err);
-      }
-    };
-    
-    fetchPartner();
-    fetchOutgoingRequests();
   }, [user]);
 
   const handleUnlink = async () => {
@@ -329,7 +342,7 @@ function Settings() {
               Unlink Partner
             </Button>
           </div>
-        ) : outgoingRequests.length > 0 ? (
+        ) : outgoingRequests && outgoingRequests.length > 0 ? (
           <div className="space-y-4">
             <h4 className="font-medium text-gray-700">Pending Link Requests</h4>
             <ul className="space-y-3">
@@ -386,6 +399,10 @@ function Settings() {
     <ChildrenManager />
   );
 
+  const renderCalendarTab = () => (
+    <GoogleCalendarSync />
+  );
+
   const renderDocumentsTab = () => (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <div className="flex items-center mb-4">
@@ -415,43 +432,56 @@ function Settings() {
       
       {/* Tabs Navigation */}
       <div className="mb-6 border-b border-gray-200">
-        <ul className="flex flex-wrap -mb-px">
+        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
           <li className="mr-2">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`inline-flex items-center px-4 py-2 border-b-2 rounded-t-lg ${
+              className={`inline-flex items-center px-4 py-2 rounded-md transition-colors hover:bg-primary hover:text-white ${
                 activeTab === 'profile'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                  ? 'bg-primary-dark text-white'
+                  : 'bg-gray-100 text-gray-700'
               }`}
             >
-              <FaUser className={`mr-2 ${activeTab === 'profile' ? 'text-primary' : 'text-gray-400'}`} />
+              <FaUser className="mr-2" />
               Your Profile & Linked Partner
             </button>
           </li>
           <li className="mr-2">
             <button
               onClick={() => setActiveTab('children')}
-              className={`inline-flex items-center px-4 py-2 border-b-2 rounded-t-lg ${
+              className={`inline-flex items-center px-4 py-2 rounded-md transition-colors hover:bg-primary hover:text-white ${
                 activeTab === 'children'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+                  ? 'bg-primary-dark text-white'
+                  : 'bg-gray-100 text-gray-700'
               }`}
             >
-              <FaChild className={`mr-2 ${activeTab === 'children' ? 'text-primary' : 'text-gray-400'}`} />
+              <FaChild className="mr-2" />
               Children
             </button>
           </li>
           <li className="mr-2">
             <button
-              onClick={() => setActiveTab('documents')}
-              className={`inline-flex items-center px-4 py-2 border-b-2 rounded-t-lg ${
-                activeTab === 'documents'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+              onClick={() => setActiveTab('calendar')}
+              className={`inline-flex items-center px-4 py-2 rounded-md transition-colors hover:bg-primary hover:text-white ${
+                activeTab === 'calendar'
+                  ? 'bg-primary-dark text-white'
+                  : 'bg-gray-100 text-gray-700'
               }`}
             >
-              <FaFileAlt className={`mr-2 ${activeTab === 'documents' ? 'text-primary' : 'text-gray-400'}`} />
+              <FaCalendarAlt className="mr-2" />
+              Calendar Sync
+            </button>
+          </li>
+          <li className="mr-2">
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`inline-flex items-center px-4 py-2 rounded-md transition-colors hover:bg-primary hover:text-white ${
+                activeTab === 'documents'
+                  ? 'bg-primary-dark text-white'
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              <FaFileAlt className="mr-2" />
               Documents
             </button>
           </li>
@@ -462,6 +492,7 @@ function Settings() {
       <div className="tab-content">
         {activeTab === 'profile' && renderProfileAndPartnerTab()}
         {activeTab === 'children' && renderChildrenTab()}
+        {activeTab === 'calendar' && renderCalendarTab()}
         {activeTab === 'documents' && renderDocumentsTab()}
       </div>
     </div>
